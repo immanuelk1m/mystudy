@@ -12,5 +12,19 @@
     "description": "K-mooc 일반생물학 강의",
     "lastUpdated": "2025-08-01T00:00:00Z",
     "filesCount": 11
+  },
+  {
+    "id": "36298080-d788-4510-87bf-4cece7c4f3a7",
+    "title": "Advanced SQL Joins & Operations",
+    "description": "Notebook for Advanced SQL Joins & Operations.",
+    "lastUpdated": "2025-06-05T01:30:43.183519",
+    "filesCount": 0
+  },
+  {
+    "id": "4be8ce1a-8559-4b11-bba1-19d809fd2afc",
+    "title": "Advanced SQL: Views & Window Functions",
+    "description": "Notebook for Advanced SQL: Views & Window Functions.",
+    "lastUpdated": "2025-06-05T01:31:08.861549",
+    "filesCount": 0
   }
 ]

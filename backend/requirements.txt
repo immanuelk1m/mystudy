@@ -5,3 +5,4 @@ langchain
 langchain-google-genai
 pypdf
 python-dotenv
+python-multipart

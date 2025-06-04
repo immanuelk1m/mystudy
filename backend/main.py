@@ -1,14 +1,16 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles # Added for static files
 from dotenv import load_dotenv # Added for .env loading
+# Load environment variables from .env file FIRST
+load_dotenv()
+
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles # Added for static files
 import os # Added for path joining
 
 from .routers import notebooks # Use relative import for routers sub-package
 from .routers import batch_processing # Add import for the new batch processing router
-
-# Load environment variables from .env file
-load_dotenv()
 
 app = FastAPI(
     title="Study Platform API",
@@ -22,6 +24,7 @@ origins = [
     "http://localhost",         # Common default for local dev
     "http://localhost:3000",    # Default for create-react-app
     "http://localhost:5173",    # Default for Vite
+    "http://localhost:8080",    # Current frontend dev server port
     # Add other origins if your frontend runs on a different port
 ]
 
