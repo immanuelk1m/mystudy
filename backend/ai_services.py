@@ -47,7 +47,7 @@ class LLMImportantTerm(BaseModel):
     definition: str = PydanticField(..., description="A concise definition of the term")
 
 class LLMOutlineItem(BaseModel):
-    title: str = PydanticField(..., description="Title of this outline section")
+    text: str = PydanticField(..., description="Text content/title of this outline section") # Renamed from title
     id: str = PydanticField(..., description="A unique, URL-friendly ID for this section (e.g., 'introduction-to-calculus')")
     children: Optional[List['LLMOutlineItem']] = PydanticField(None, description="Nested outline items, if any")
 
@@ -56,7 +56,7 @@ LLMOutlineItem.update_forward_refs()
 class LLMAINotes(BaseModel):
     summary: str = PydanticField(..., description="A concise summary of the provided text content.")
     key_concepts: List[LLMKeyConcept] = PydanticField(..., description="A list of 3-5 key concepts discussed in the text.")
-    important_terms: List[LLMImportantTerm] = PydanticField(..., description="A list of 5-7 important terms and their definitions from the text.")
+    important_terms: Optional[List[LLMImportantTerm]] = PydanticField(None, description="A list of 5-7 important terms and their definitions from the text.") # Made optional
     outline: List[LLMOutlineItem] = PydanticField(..., description="A hierarchical outline of the text content.")
 
 async def generate_ai_notes_from_text(text_content: str) -> Optional[models.AINotes]:
@@ -108,7 +108,7 @@ def _convert_llm_outline_to_model_outline(llm_item: LLMOutlineItem) -> models.Ou
         children = [_convert_llm_outline_to_model_outline(child) for child in llm_item.children]
     
     return models.OutlineItem(
-        title=llm_item.title, # Access as attribute
+        title=llm_item.text, # Access as attribute
         id=llm_item.id,       # Access as attribute
         children=children if children else None)
 
@@ -176,22 +176,28 @@ async def suggest_notebook_for_text(text_content: str, existing_notebook_titles:
 # --- Full Chapter Generation from PDF Text ---
 
 class LLMDocumentContentBlock(BaseModel):
-    type: str = PydanticField(..., description="Type of content block, e.g., 'paragraph', 'heading'.")
+    block_type: str = PydanticField(..., description="Type of content block, e.g., 'paragraph', 'heading'.") # Renamed from 'type'
     text: Optional[str] = PydanticField(None, description="Text content for paragraph, heading, etc.")
     level: Optional[int] = PydanticField(None, description="Heading level (e.g., 1, 2, 3) if type is 'heading'.")
-    # Add other fields if LLM is expected to generate more complex blocks like lists, images, code
+    # image_url: Optional[str] = PydanticField(None, description="URL for image content if type is 'image'.") lists, images, code
 
 class LLMQuizQuestion(BaseModel):
     question: str = PydanticField(..., description="The quiz question.")
-    options: List[str] = PydanticField(..., description="A list of 2-4 multiple choice options.")
-    answer_index: int = PydanticField(..., description="The 0-based index of the correct option in the options list.")
-    explanation: str = PydanticField(..., description="A brief explanation for the correct answer.")
+    type: str = PydanticField(..., description="Type of quiz question, e.g., 'multiple_choice', 'short_answer'.")
+    options: Optional[List[str]] = PydanticField(None, description="A list of 2-4 multiple choice options, if type is 'multiple_choice'.")
+    answer_index: Optional[int] = PydanticField(None, description="The 0-based index of the correct option, if type is 'multiple_choice'.")
+    answer: Optional[str] = PydanticField(None, description="The correct answer text, if type is 'short_answer'.")
+    explanation: Optional[str] = PydanticField(None, description="A brief explanation for the correct answer.")
+
+class LLMMetadata(BaseModel):
+    source_pdf: str = PydanticField(..., description="The original PDF filename provided by the LLM.")
+    text_length_characters: int = PydanticField(..., description="The approximate length of the text content in characters, provided by the LLM.")
 
 class LLMGeneratedChapter(BaseModel):
     title: str = PydanticField(..., description="A concise and relevant title for the chapter based on the text.")
-    metadata: str = PydanticField(..., description="Short metadata, e.g., 'Source: Uploaded PDF - [original_pdf_filename], Text length: [length] chars'.")
-    document_content_blocks: List[LLMDocumentContentBlock] = PydanticField(..., description="A list of content blocks (paragraphs, headings) derived from the text. Aim for logical structure.")
-    ai_notes: LLMAINotes = PydanticField(..., description="Comprehensive AI notes including summary, key concepts, important terms, and outline based on the text.")
+    metadata: LLMMetadata = PydanticField(..., description="Structured metadata about the source text, including PDF filename and length.")
+    document_content_blocks: List[LLMDocumentContentBlock] = PydanticField(..., description="A list of content blocks (paragraphs, headings).")
+    ai_notes: LLMAINotes = PydanticField(..., description="AI-generated notes (summary, key concepts, terms, outline).")
     quiz: List[LLMQuizQuestion] = PydanticField(..., description="A short quiz with 2-3 questions based on the text content.")
 
 async def generate_chapter_from_pdf_text(text_content: str, original_pdf_filename: str) -> Optional[models.DocumentContent]:
@@ -263,10 +269,10 @@ async def generate_chapter_from_pdf_text(text_content: str, original_pdf_filenam
         app_doc_content_blocks = []
         # LLMGeneratedChapter.document_content_blocks is required, so generated_chapter_data.document_content_blocks should exist.
         for block in generated_chapter_data.document_content_blocks: # block is LLMDocumentContentBlock
-            app_block_data = {'type': block.type}
+            app_block_data = {'type': block.block_type} # Changed from block.type
             if block.text is not None:
                 app_block_data['text'] = block.text
-            if block.type == 'heading' and block.level is not None:
+            if block.block_type == 'heading' and block.level is not None: # Changed from block.type
                 app_block_data['level'] = block.level
             app_doc_content_blocks.append(app_block_data)
         
@@ -296,18 +302,21 @@ async def generate_chapter_from_pdf_text(text_content: str, original_pdf_filenam
 
         app_quiz = []
         # quiz is required in LLMGeneratedChapter
-        for q_llm in generated_chapter_data.quiz: # q_llm is LLMQuizQuestion
+        for q_llm in generated_chapter_data.quiz: # q_llm is new LLMQuizQuestion
+            # Assuming models.QuizQuestion can handle these fields (might need adjustment in models.py)
             app_quiz.append(models.QuizQuestion(
                 question=q_llm.question,
-                options=q_llm.options,
-                answerIndex=q_llm.answer_index,
+                type=q_llm.type, # Pass the question type
+                options=q_llm.options if q_llm.options is not None else [], # Default to empty list if MC options are None
+                answer=q_llm.answer, # Pass the short answer text
+                answerIndex=q_llm.answer_index, # Pass MC answer index
                 explanation=q_llm.explanation
             ))
         
-        # Fallback for metadata if LLM doesn't provide it (though it's required in LLMGeneratedChapter)
-        final_metadata = generated_chapter_data.metadata
-        if not final_metadata: # Should not happen if LLM adheres to schema
-             final_metadata = f"Source: Uploaded PDF - {original_pdf_filename}, Text length: {len(text_content)} chars (approx.)"
+        # generated_chapter_data.metadata is now an LLMMetadata object.
+        # The fields source_pdf and text_length_characters within LLMMetadata are required.
+        llm_meta = generated_chapter_data.metadata
+        final_metadata = f"Source: {llm_meta.source_pdf}, Text length: {llm_meta.text_length_characters} chars"
 
         return models.DocumentContent(
             title=generated_chapter_data.title, # title is required in LLMGeneratedChapter
