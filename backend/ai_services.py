@@ -4,14 +4,15 @@ from typing import List, Dict, Any, Optional
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.output_parsers import StrOutputParser, JsonOutputParser
-from langchain_core.pydantic_v1 import BaseModel, Field as PydanticField # To avoid conflict with FastAPI's Field
+from langchain_core.runnables import RunnableLambda # Added for logging
+from pydantic import BaseModel, Field as PydanticField # Updated import
 
 from pypdf import PdfReader
 from . import models # Assuming models.py is in the same directory or accessible
 
 # Initialize the Gemini LLM
 # It will automatically use GOOGLE_API_KEY from the environment
-llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash-latest", temperature=0.7)
+llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash-preview-05-20", temperature=0.7)
 
 # --- PDF Processing ---
 def extract_text_from_pdf(pdf_file_path: str) -> str:
@@ -100,14 +101,16 @@ async def generate_ai_notes_from_text(text_content: str) -> Optional[models.AINo
         print(f"Error generating AI notes with LLM: {e}")
         return None
 
-def _convert_llm_outline_to_model_outline(llm_item: Dict[str, Any]) -> models.OutlineItem:
-    """Helper to recursively convert LLM outline items to application model outline items."""
+def _convert_llm_outline_to_model_outline(llm_item: LLMOutlineItem) -> models.OutlineItem:
+    """Helper to recursively convert LLMOutlineItem instances to application model outline items."""
+    children = []
+    if llm_item.children: # Access as attribute
+        children = [_convert_llm_outline_to_model_outline(child) for child in llm_item.children]
+    
     return models.OutlineItem(
-        title=llm_item.get('title'),
-        id=llm_item.get('id'),
-        children=([_convert_llm_outline_to_model_outline(child) for child in llm_item.get('children')] 
-                    if llm_item.get('children') else None)
-    )
+        title=llm_item.title, # Access as attribute
+        id=llm_item.id,       # Access as attribute
+        children=children if children else None)
 
 async def suggest_notebook_for_text(text_content: str, existing_notebook_titles: Optional[List[str]] = None) -> Optional[str]:
     """Suggests a concise notebook title based on the provided text content using Gemini.
@@ -202,12 +205,22 @@ async def generate_chapter_from_pdf_text(text_content: str, original_pdf_filenam
         ("system", f"You are an expert content creator and academic assistant. Your task is to analyze the provided text, which was extracted from a PDF named '{original_pdf_filename}', and generate a complete, well-structured chapter. "
                    "The chapter should include: a concise title, metadata (mentioning the source PDF and text length), a series of document content blocks (like paragraphs and headings to structure the main information), comprehensive AI Notes (summary, key concepts, important terms, outline), and a short quiz (2-3 questions). "
                    "For document_content_blocks, use 'paragraph' for general text and 'heading' for section titles (specify 'level' for headings, e.g., 2 for main sections, 3 for subsections). "
+                   "IMPORTANT for 'ai_notes.key_concepts': Each item in the 'key_concepts' list MUST have a non-null 'term' (string) AND a non-null 'definition' (which can be a simple string OR a KeyConceptDefinition object). If 'definition' is a KeyConceptDefinition object, at least one of its 'easy', 'medium', or 'hard' fields must be a string; others can be null if not applicable. These fields are critical for successful parsing. "
                    "Ensure IDs for outline items within AI Notes are unique and URL-friendly. "
                    "Format your entire response as a single JSON object that strictly adheres to the following Pydantic schema: \n{{format_instructions}}"),
         ("human", "Please generate a full chapter from the following text content: \n\n--BEGIN TEXT CONTENT--\n{text_content}\n--END TEXT CONTENT--\n\nRemember to include a title, metadata, document_content_blocks, ai_notes, and a quiz in your response.")
     ])
 
-    chain = prompt_template | llm | parser
+    def _log_llm_output_before_parsing(item):
+        print("--- LLM RAW OUTPUT START ---")
+        if hasattr(item, 'content'): # AIMessage
+            print(item.content)
+        else: # Raw string or other type
+            print(item)
+        print("--- LLM RAW OUTPUT END ---")
+        return item
+    
+    chain = prompt_template | llm | RunnableLambda(_log_llm_output_before_parsing) | parser
 
     try:
         # Calculate text length for metadata
@@ -221,43 +234,61 @@ async def generate_chapter_from_pdf_text(text_content: str, original_pdf_filenam
         })
 
         # Map LLM output to application's models.DocumentContent
-        doc_content_blocks_from_llm = generated_chapter_data.get('document_content_blocks', [])
+        # generated_chapter_data is an instance of LLMGeneratedChapter
+
         app_doc_content_blocks = []
-        for block_data in doc_content_blocks_from_llm:
-            # Basic mapping, assuming LLM provides 'type' and other relevant fields like 'text', 'level'
-            app_block = {'type': block_data.get('type')}
-            if 'text' in block_data:
-                app_block['text'] = block_data['text']
-            if 'level' in block_data and block_data.get('type') == 'heading':
-                app_block['level'] = block_data['level']
-            app_doc_content_blocks.append(app_block)
+        # LLMGeneratedChapter.document_content_blocks is required, so generated_chapter_data.document_content_blocks should exist.
+        for block in generated_chapter_data.document_content_blocks: # block is LLMDocumentContentBlock
+            app_block_data = {'type': block.type}
+            if block.text is not None:
+                app_block_data['text'] = block.text
+            if block.type == 'heading' and block.level is not None:
+                app_block_data['level'] = block.level
+            app_doc_content_blocks.append(app_block_data)
         
-        ai_notes_from_llm = generated_chapter_data.get('ai_notes', {})
+        # ai_notes_from_llm is an LLMAINotes instance, also required in LLMGeneratedChapter
+        ai_notes_from_llm = generated_chapter_data.ai_notes
+        
+        app_key_concepts = []
+        if ai_notes_from_llm.key_concepts: # key_concepts is required in LLMAINotes
+            for kc in ai_notes_from_llm.key_concepts: # kc is LLMKeyConcept
+                app_key_concepts.append(models.KeyConcept(term=kc.term, definition=kc.definition))
+
+        app_important_terms = []
+        if ai_notes_from_llm.important_terms: # important_terms is required in LLMAINotes
+            for it in ai_notes_from_llm.important_terms: # it is LLMImportantTerm
+                app_important_terms.append(models.ImportantTerm(term=it.term, definition=it.definition))
+
+        app_outline = []
+        if ai_notes_from_llm.outline: # outline is required in LLMAINotes
+            app_outline = [_convert_llm_outline_to_model_outline(item) for item in ai_notes_from_llm.outline] # item is LLMOutlineItem
+
         app_ai_notes = models.AINotes(
-            summary=ai_notes_from_llm.get('summary', ''),
-            keyConcepts=[models.KeyConcept(
-                term=kc.get('term'), 
-                definition=kc.get('definition') 
-            ) for kc in ai_notes_from_llm.get('key_concepts', [])],
-            importantTerms=[models.ImportantTerm(
-                term=it.get('term'), 
-                definition=it.get('definition')
-            ) for it in ai_notes_from_llm.get('important_terms', [])],
-            outline=[_convert_llm_outline_to_model_outline(item) for item in ai_notes_from_llm.get('outline', [])]
+            summary=ai_notes_from_llm.summary, # summary is required in LLMAINotes
+            keyConcepts=app_key_concepts,
+            importantTerms=app_important_terms,
+            outline=app_outline
         )
 
-        quiz_from_llm = generated_chapter_data.get('quiz', [])
-        app_quiz = [models.QuizQuestion(
-            question=q.get('question'),
-            options=q.get('options'),
-            answerIndex=q.get('answer_index'), # Ensure field name matches your model if different
-            explanation=q.get('explanation')
-        ) for q in quiz_from_llm]
+        app_quiz = []
+        # quiz is required in LLMGeneratedChapter
+        for q_llm in generated_chapter_data.quiz: # q_llm is LLMQuizQuestion
+            app_quiz.append(models.QuizQuestion(
+                question=q_llm.question,
+                options=q_llm.options,
+                answerIndex=q_llm.answer_index,
+                explanation=q_llm.explanation
+            ))
+        
+        # Fallback for metadata if LLM doesn't provide it (though it's required in LLMGeneratedChapter)
+        final_metadata = generated_chapter_data.metadata
+        if not final_metadata: # Should not happen if LLM adheres to schema
+             final_metadata = f"Source: Uploaded PDF - {original_pdf_filename}, Text length: {len(text_content)} chars (approx.)"
 
         return models.DocumentContent(
-            title=generated_chapter_data.get('title', 'Untitled Chapter'),
-            metadata=generated_chapter_data.get('metadata', metadata_info), # Use LLM metadata, fallback to basic
-            documentContent=app_doc_content_blocks, # Mapped content blocks
+            title=generated_chapter_data.title, # title is required in LLMGeneratedChapter
+            metadata=final_metadata,
+            documentContent=app_doc_content_blocks,
             aiNotes=app_ai_notes,
             quiz=app_quiz
         )
