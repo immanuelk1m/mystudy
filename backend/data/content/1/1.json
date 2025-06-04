@@ -1,0 +1,28 @@
+{
+  "title": "1. 행렬과 연립방정식",
+  "metadata": "선형대수학 • 18 페이지 • 2025년 6월 15일 업데이트",
+  "documentContent": [
+    { "type": "paragraph", "text": "행렬은 선형대수학의 기본입니다." },
+    { "type": "heading", "level": 2, "text": "주요 용어" }
+  ],
+  "aiNotes": {
+    "summary": "이 섹션에서는 행렬의 기본 정의와 연산을 다룹니다.",
+    "keyConcepts": [
+      { "term": "행렬", "definition": "숫자나 변수를 직사각형 형태로 배열한 것." }
+    ],
+    "importantTerms": [
+      { "term": "행", "definition": "행렬의 가로줄" }
+    ],
+    "outline": [
+      { "title": "1.1 행렬이란?", "id": "matrix-def" }
+    ]
+  },
+  "quiz": [
+    {
+      "question": "행렬의 세로줄은 무엇인가요?",
+      "options": ["행", "열", "원소"],
+      "answerIndex": 1,
+      "explanation": "행렬의 세로줄은 열이라고 합니다."
+    }
+  ]
+}

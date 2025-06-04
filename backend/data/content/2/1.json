@@ -1,0 +1,27 @@
+{
+  "title": "1. 세포의 구조와 기능",
+  "metadata": "일반생물학 • 25 페이지 • 2025년 8월 10일 업데이트",
+  "documentContent": [
+    { "type": "paragraph", "text": "모든 생명체의 기본 단위는 세포입니다." }
+  ],
+  "aiNotes": {
+    "summary": "세포의 다양한 소기관과 그 기능에 대해 알아봅니다.",
+    "keyConcepts": [
+      { "term": "세포막", "definition": "세포를 둘러싸는 막" }
+    ],
+    "importantTerms": [
+      { "term": "미토콘드리아", "definition": "에너지 생산 공장" }
+    ],
+    "outline": [
+      { "title": "1.1 세포의 발견", "id": "cell-discovery" }
+    ]
+  },
+  "quiz": [
+    {
+      "question": "식물 세포에만 있는 구조는?",
+      "options": ["미토콘드리아", "엽록체", "핵"],
+      "answerIndex": 1,
+      "explanation": "엽록체는 식물 세포에서 광합성을 담당합니다."
+    }
+  ]
+}

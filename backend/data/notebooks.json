@@ -1,0 +1,16 @@
+[
+  {
+    "id": "1",
+    "title": "선형대수학",
+    "description": "한동대학교 선형대수학 강의",
+    "lastUpdated": "2025-05-01T00:00:00Z",
+    "filesCount": 17
+  },
+  {
+    "id": "2",
+    "title": "일반생물학",
+    "description": "K-mooc 일반생물학 강의",
+    "lastUpdated": "2025-08-01T00:00:00Z",
+    "filesCount": 11
+  }
+]
