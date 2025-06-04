@@ -1,4 +1,4 @@
-.PHONY: all run run-backend run-frontend install-backend-deps install-frontend-deps stop clean
+.PHONY: all run run-backend run-frontend install-backend-deps install-frontend-deps stop clean run-backend-bg
 
 # Default target
 all: run
@@ -12,18 +12,39 @@ install-frontend-deps:
 	@echo "Installing frontend dependencies (assuming npm)..."
 	@cd frontend && npm install
 
-# Run servers
+# Individual run targets (foreground)
 run-backend:
 	@echo "Starting backend server on http://localhost:8000 ..."
-	@cd backend && uv run uvicorn main:app --reload --port 8000
+	@PYTHONPATH=$(pwd) uv run --python backend/.venv/bin/python uvicorn backend.main:app --reload --port 8000
 
 run-frontend:
-	@echo "Starting frontend server (assuming npm start on http://localhost:3000)..."
-	@cd frontend && npm start
+	@echo "Starting frontend server with 'npm run dev' on http://localhost:3000 (Vite default) ..."
+	@cd frontend && npm run dev
 
-run:
-	@echo "Starting backend and frontend servers concurrently..."
-	@echo "Backend will be on http://localhost:8000"
+# Target to run backend in background
+run-backend-bg:
+	@echo "Starting backend server in background on http://localhost:8000 ..."
+	@PYTHONPATH=$(pwd) uv run --python backend/.venv/bin/python uvicorn backend.main:app --reload --port 8000 &
+
+# Target to run both: backend in background, frontend in foreground
+run: run-backend-bg run-frontend
+	@echo "\nBoth servers initiated."
+	@echo "Frontend server is running in the foreground (output visible above)."
+	@echo "Backend server was started in the background."
+	@echo "Press Ctrl+C to stop the frontend server and this 'make' process."
+	@echo "The backend server (started by 'run-backend-bg') will continue running."
+	@echo "You may need to stop it manually (e.g., using 'kill' or by creating a 'make stop-backend' target)."
+
+# Optional: Define stop and clean targets if needed, as they are in .PHONY
+# stop:
+#	@echo "Stopping servers..."
+#	@echo "Note: This is a placeholder. Implement specific stop commands if needed."
+#	# Example for backend: pkill -f "uvicorn main:app --reload --port 8000"
+#	# Example for frontend: pkill -f "npm start" # Adjust if using 'npm run dev'
+
+# clean:
+#	@echo "Cleaning up..."
+#	# Add cleanup commands here (e.g., remove __pycache__, node_modules, build artifacts)
 	@echo "Frontend will be on http://localhost:3000 (or as configured by npm start)"
 	@make run-backend & make run-frontend
 
