@@ -5,7 +5,7 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.output_parsers import StrOutputParser, JsonOutputParser
 from langchain_core.runnables import RunnableLambda # Added for logging
-from pydantic import BaseModel, Field as PydanticField # Updated import
+from pydantic import BaseModel, Field as PydanticField, ValidationError # Updated import
 
 from pypdf import PdfReader
 from . import models # Assuming models.py is in the same directory or accessible
@@ -225,16 +225,40 @@ async def generate_chapter_from_pdf_text(text_content: str, original_pdf_filenam
     try:
         # Calculate text length for metadata
         text_length = len(text_content)
-        metadata_info = f"Source: Uploaded PDF - {original_pdf_filename}, Text length: {text_length} chars (approx.)"
+        # metadata_info = f"Source: Uploaded PDF - {original_pdf_filename}, Text length: {text_length} chars (approx.)" # Not directly used later, LLM provides it
 
-        generated_chapter_data = await chain.ainvoke({
+        raw_llm_output_parsed = await chain.ainvoke({
             "text_content": text_content,
             "original_pdf_filename": original_pdf_filename, # For the prompt context
             "format_instructions": parser.get_format_instructions()
         })
 
+        actual_chapter_payload = raw_llm_output_parsed
+        # Check if the output is a dictionary with a single "chapter" key (common nesting issue)
+        if isinstance(raw_llm_output_parsed, dict) and "chapter" in raw_llm_output_parsed and len(raw_llm_output_parsed) == 1:
+            print("[TASK DEBUG] Detected 'chapter' nesting in LLM output. Unwrapping.")
+            actual_chapter_payload = raw_llm_output_parsed["chapter"]
+        
+        # Ensure we have a Pydantic model instance for LLMGeneratedChapter
+        # The JsonOutputParser in the chain should ideally return an instance of LLMGeneratedChapter
+        # if the JSON directly matches the model. If it returned a dict (e.g. after parsing a string
+        # that wasn't auto-coerced by the parser, or if we unwrapped), we parse it here.
+        if isinstance(actual_chapter_payload, dict):
+            try:
+                generated_chapter_data = LLMGeneratedChapter.parse_obj(actual_chapter_payload) # Pydantic v1 uses parse_obj
+            except ValidationError as ve:
+                print(f"[TASK ERROR] Pydantic validation failed for LLMGeneratedChapter: {ve}")
+                print(f"[TASK DEBUG] Payload causing validation error: {actual_chapter_payload}")
+                return None
+        elif isinstance(actual_chapter_payload, LLMGeneratedChapter):
+            generated_chapter_data = actual_chapter_payload
+        else:
+            print(f"[TASK ERROR] Unexpected type for chapter data after LLM chain: {type(actual_chapter_payload)}. Expected LLMGeneratedChapter or dict.")
+            print(f"[TASK DEBUG] Unexpected payload: {actual_chapter_payload}")
+            return None
+
         # Map LLM output to application's models.DocumentContent
-        # generated_chapter_data is an instance of LLMGeneratedChapter
+        # generated_chapter_data is now expected to be a valid LLMGeneratedChapter instance
 
         app_doc_content_blocks = []
         # LLMGeneratedChapter.document_content_blocks is required, so generated_chapter_data.document_content_blocks should exist.
