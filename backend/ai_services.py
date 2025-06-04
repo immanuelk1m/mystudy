@@ -109,6 +109,67 @@ def _convert_llm_outline_to_model_outline(llm_item: Dict[str, Any]) -> models.Ou
                     if llm_item.get('children') else None)
     )
 
+async def suggest_notebook_for_text(text_content: str, existing_notebook_titles: Optional[List[str]] = None) -> Optional[str]:
+    """Suggests a concise notebook title based on the provided text content using Gemini.
+
+    Args:
+        text_content: The text extracted from a PDF.
+        existing_notebook_titles: An optional list of existing notebook titles to help the AI 
+                                  suggest a new unique name or match an existing one if highly relevant.
+
+    Returns:
+        A string suggestion for a notebook title, or None if an error occurs or no content.
+    """
+    if not text_content:
+        return None
+
+    parser = StrOutputParser()
+
+    # Prepare context about existing notebooks if provided
+    existing_notebooks_prompt_segment = ""
+    if existing_notebook_titles:
+        titles_str = "\n - ".join(existing_notebook_titles)
+        existing_notebooks_prompt_segment = (
+            f"Consider the following existing notebook titles:\n - {titles_str}\n\n"
+            "If the content is very similar to one of these, you can suggest that title. "
+            "Otherwise, please suggest a new, unique, and descriptive title."
+        )
+    else:
+        existing_notebooks_prompt_segment = "Please suggest a new, descriptive title."
+
+
+    prompt_template = ChatPromptTemplate.from_messages([
+        ("system", "You are an expert academic assistant specializing in organizing study materials. "
+                   "Your task is to analyze the provided text content and suggest a concise and descriptive title for a study notebook that would contain this content. "
+                   "The title should ideally be 3-5 words long and clearly reflect the main subject or topic of the text. "
+                   f"{existing_notebooks_prompt_segment}"
+                   "Respond ONLY with the suggested notebook title string, and nothing else."),
+        ("human", "Please suggest a notebook title for the following text content: \n\n--BEGIN TEXT CONTENT--\n{text_content}\n--END TEXT CONTENT--")
+    ])
+
+    chain = prompt_template | llm | parser
+
+    try:
+        # Summarize a portion of the text if it's too long to avoid exceeding token limits for this specific task
+        # This task (title suggestion) might not need the full text if it's very extensive.
+        # For now, we'll use the full text but keep this in mind for optimization.
+        # A good heuristic might be the first N characters or a summary if the text is > M characters.
+        # For example, if len(text_content) > 10000: text_for_prompt = text_content[:10000]
+        text_for_prompt = text_content # Using full text for now
+
+        suggested_title = await chain.ainvoke({"text_content": text_for_prompt})
+        
+        # Clean up the title: remove potential quotes or extra formatting if LLM adds them
+        suggested_title = suggested_title.strip().replace('"', '').replace('\'', '')
+        if suggested_title.lower().startswith("title:"):
+            suggested_title = suggested_title[len("title:"):].strip()
+        
+        return suggested_title if suggested_title else None
+
+    except Exception as e:
+        print(f"Error suggesting notebook title with LLM: {e}")
+        return None
+
 # --- Full Chapter Generation from PDF Text ---
 
 class LLMDocumentContentBlock(BaseModel):

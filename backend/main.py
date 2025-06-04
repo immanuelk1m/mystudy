@@ -5,6 +5,7 @@ from dotenv import load_dotenv # Added for .env loading
 import os # Added for path joining
 
 from .routers import notebooks # Use relative import for routers sub-package
+from .routers import batch_processing # Add import for the new batch processing router
 
 # Load environment variables from .env file
 load_dotenv()
@@ -45,6 +46,7 @@ app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
 # Include routers
 app.include_router(notebooks.router)
+app.include_router(batch_processing.router) # Include the new batch processing router
 
 @app.get("/", tags=["Root"])
 async def read_root():

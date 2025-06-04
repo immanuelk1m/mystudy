@@ -4,6 +4,7 @@ import shutil # For file operations
 import uuid # For unique filenames
 from typing import List, Optional, Dict, Any, Tuple
 from fastapi import UploadFile # For type hinting
+from datetime import datetime # For timestamping new notebooks
 
 from . import models # Use relative import
 
@@ -46,6 +47,45 @@ def get_notebooks() -> List[models.Notebook]:
     if notebooks_data:
         return [models.Notebook(**nb) for nb in notebooks_data]
     return []
+
+
+def get_all_notebook_titles() -> List[str]:
+    """Retrieves a list of all notebook titles."""
+    notebooks = get_notebooks()
+    return [nb.title for nb in notebooks]
+
+def get_or_create_notebook(title: str) -> models.Notebook:
+    """Gets a notebook by title if it exists, otherwise creates a new one."""
+    notebooks_file_path = os.path.join(DATA_DIR, 'notebooks.json')
+    notebooks_list = load_json(notebooks_file_path)
+    if notebooks_list is None: # Handle case where notebooks.json doesn't exist or is empty/invalid
+        notebooks_list = []
+
+    # Check if notebook with the same title already exists (case-sensitive)
+    for nb_data in notebooks_list:
+        if nb_data.get('title') == title:
+            return models.Notebook(**nb_data)
+
+    # If not found, create a new notebook
+    new_notebook_id = str(uuid.uuid4())
+    new_notebook_data = {
+        "id": new_notebook_id,
+        "title": title,
+        "description": f"Notebook for {title}.", # Default description
+        "lastUpdated": datetime.now().isoformat(), # Ensure datetime is imported
+        "filesCount": 0
+    }
+    
+    notebooks_list.append(new_notebook_data)
+    
+    if _save_json(notebooks_file_path, notebooks_list):
+        return models.Notebook(**new_notebook_data)
+    else:
+        # This case should ideally raise an exception or handle error more robustly.
+        # If saving fails, the application state might become inconsistent.
+        print(f"CRITICAL: Failed to save new notebook '{title}' to {notebooks_file_path}.")
+        # Raise an exception to signal failure to the caller, allowing for transactional rollback or error handling.
+        raise IOError(f"Failed to save notebook: {title}")
 
 def get_notebook_by_id(notebook_id: str) -> Optional[models.Notebook]:
     notebooks_data = load_json(os.path.join(DATA_DIR, 'notebooks.json'))
@@ -122,6 +162,30 @@ def save_uploaded_pdf(notebook_id: str, uploaded_file: UploadFile) -> Optional[T
     finally:
         if uploaded_file and hasattr(uploaded_file, 'file') and not uploaded_file.file.closed:
              uploaded_file.file.close()
+
+
+def move_temp_pdf_to_notebook_storage(temp_pdf_path: str, notebook_id: str, original_filename: str) -> Optional[Tuple[str, str]]:
+    """Moves a PDF from a temporary path to a notebook-specific folder and returns its web path and new file system path."""
+    try:
+        _, extension = os.path.splitext(original_filename)
+        unique_suffix = uuid.uuid4().hex[:8]
+        safe_original_base = "".join(c if c.isalnum() or c in (' ', '_', '-') else '_' for c in os.path.splitext(original_filename)[0])
+        unique_filename = f"{safe_original_base}_{unique_suffix}{extension if extension else '.pdf'}"
+        
+        notebook_upload_dir = os.path.join(UPLOADS_DIR, notebook_id)
+        os.makedirs(notebook_upload_dir, exist_ok=True)
+        
+        final_file_system_path = os.path.join(notebook_upload_dir, unique_filename)
+        
+        shutil.move(temp_pdf_path, final_file_system_path) # Move the file
+        
+        web_path = f"/static/uploads/{notebook_id}/{unique_filename}"
+        return web_path, final_file_system_path
+    except Exception as e:
+        print(f"Error moving temp PDF {original_filename} (from {temp_pdf_path}) to notebook {notebook_id}: {e}")
+        # If move fails, the original temp file might still exist at temp_pdf_path
+        # Consider if temp_pdf_path should be cleaned up by the caller in case of failure here.
+        return None
 
 def _get_next_chapter_number_and_path_params(notebook_id: str) -> Tuple[str, str, str, str, str]:
     """Determines the next chapter number and paths for a given notebook."""
