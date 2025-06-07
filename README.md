@@ -13,7 +13,7 @@
 
 저희가 어떤 미래를 그리고 있는지, 영상으로 먼저 만나보세요!
 
-<video src="https://github.com/immanuelk1m/mystudy/raw/main/demo/demo.mp4" width="100%" controls></video>
+![Learniverse Demo](https://github.com/immanuelk1m/mystudy/blob/main/demo/demo.gif?raw=true)
 
 ## ✨ 아이슈타인이 제공하는 특별한 학습 경험
 
