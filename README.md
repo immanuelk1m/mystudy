@@ -1,81 +1,81 @@
-# 🤖 AI 기반 학습 노트 플랫폼
+# Learniverse: AI와 함께하는 당신만의 지식 우주
+
+<p align="center">
+  <img src="https://github.com/immanuelk1m/mystudy/assets/33343482/a8c3a798-a5b8-4c8a-828c-72a8e8a13d61" alt="Learniverse_logo" width="200"/>
+</p>
+
+<h2 align="center">"이 모든 학습 자료를 내 머릿속처럼 정리하고, 필요할 때 바로 꺼내볼 순 없을까?"</h2>
+
+<p align="center">
+방대한 전공 서적, 빼곡한 강의 노트, 인터넷에서 찾은 수많은 아티클까지.<br/>
+우리는 매일 정보의 홍수 속에서 허우적거립니다.<br/>
+Learniverse는 바로 이 고민에 대한 저희의 대답입니다.<br/>
+단순히 문서를 저장하는 것을 넘어, AI 기술을 통해 여러분의 학습 자료를 살아있는 지식 베이스로 만들어주는 플랫폼입니다.
+</p>
 
 ## 🚀 데모 영상
 
+저희가 어떤 미래를 그리고 있는지, 영상으로 먼저 만나보세요!
+
 <video src="https://github.com/immanuelk1m/mystudy/raw/main/demo/demo.mp4" width="100%" controls></video>
 
-## 📝 1. 프로젝트 개요
+## ✨ Learniverse가 제공하는 특별한 학습 경험
 
-본 프로젝트는 사용자가 업로드한 문서를 기반으로 AI와 상호작용하며 학습할 수 있는 플랫폼입니다. 사용자는 문서를 업로드하여 챕터별로 학습 노트를 생성하고, AI 챗봇과 질의응답을 통해 깊이 있는 학습을 진행할 수 있습니다. React 기반의 동적인 프론트엔드와 Python(FastAPI)으로 구현된 강력한 백엔드로 구성되어 있습니다.
+기능 목록을 나열하기보다, 여러분의 학습 방식이 어떻게 변화될 수 있는지에 대해 이야기하고 싶습니다.
 
-## ✨ 2. 주요 기능
+*   **🧠 어떤 자료든, 똑똑한 학습 노트로 변신시켜보세요.**
+    > 가지고 있는 PDF 파일을 업로드하기만 하세요. Learniverse가 자동으로 내용을 분석하고 챕터별로 깔끔하게 정리해, 여러분만의 인터랙티브한 학습 노트를 만들어 드립니다. 더 이상 수많은 파일 속에서 길을 잃지 마세요.
 
-파일 구조와 컴포넌트 명을 기반으로 유추한 주요 기능은 다음과 같습니다.
+*   **💬 나만의 AI 튜터와 함께, 막힘없이 공부하세요.**
+    > 공부하다 막히는 부분이 있다면, 더 이상 검색하느라 시간을 낭비하지 마세요. AI 튜터에게 바로 질문하고, 문서 내용에 기반한 정확한 답변을 얻을 수 있습니다. 마치 24시간 대기 중인 과외 선생님 같을 거예요.
 
-*   **📄 문서 업로드:** 사용자는 학습할 PDF 문서를 시스템에 업로드할 수 있습니다.
-*   **📚 노트북/챕터 관리:** 업로드된 문서는 노트북 단위로 관리되며, 각 노트북은 여러 챕터로 구성됩니다.
-*   **뷰어:** 사용자는 업로드한 문서를 웹에서 직접 확인할 수 있습니다.
-*   **🤖 AI 챗봇:** 문서 내용에 기반하여 AI와 실시간으로 질의응답을 할 수 있습니다.
-*   **🎧 팟캐스트/오디오 뷰:** 학습 콘텐츠를 오디오 형태로 들을 수 있는 기능을 제공합니다.
-*   **👤 사용자 인증:** 회원가입 및 로그인 기능을 통해 개인화된 학습 환경을 제공합니다.
-*   **💎 프리미엄 플랜:** 추가 기능 및 혜택을 제공하는 유료 구독 모델이 존재합니다.
+*   **🎧 자투리 시간도 학습 시간으로, 귀로 들으며 공부하세요.**
+    > 이동 중이거나 다른 일을 할 때도 학습을 멈추고 싶지 않으신가요? 오디오 기능을 활용해 보세요. Learniverse가 학습 노트를 팟캐스트처럼 읽어주어, 언제 어디서든 편하게 내용을 복습할 수 있습니다.
 
-## 🛠️ 3. 기술 스택
+*   **💎 더 깊이 있는 학습을 위한 프리미엄 플랜**
+    > 기본 기능만으로도 충분히 강력하지만, 더 체계적이고 깊이 있는 학습을 원하는 분들을 위해 특별한 기능들을 담은 프리미엄 플랜을 준비했습니다.
 
-### Frontend
+## 💻 이 프로젝트를 만든 기술 친구들
 
-*   **Framework:** React
-*   **Language:** TypeScript
-*   **Build Tool:** Vite
-*   **Styling:** Tailwind CSS, shadcn/ui (Radix UI)
-*   **State Management:** React Query
-*   **Routing:** React Router
-*   **Form:** React Hook Form
+Learniverse를 현실로 만들기 위해 아래와 같은 기술들을 활용했습니다.
 
-### Backend
+| 구분      | 기술                                                              |
+| :-------- | :---------------------------------------------------------------- |
+| **Frontend**  | `React`, `TypeScript`, `Vite`, `Tailwind CSS`, `shadcn/ui`          |
+| **Backend**   | `FastAPI`, `Python`, `LangChain`, `Google Generative AI`, `Uvicorn` |
 
-*   **Framework:** FastAPI
-*   **Language:** Python
-*   **AI/LLM:** LangChain, Google Generative AI
-*   **Web Server:** Uvicorn
-*   **Data Validation:** Pydantic
-*   **Dependencies:** `requirements.txt` 참고
+## 🚀 내 컴퓨터에서 시작해보기
 
-## 🚀 4. 시작 가이드
-
-로컬 환경에서 프로젝트를 실행하는 방법은 다음과 같습니다.
+직접 Learniverse를 실행해보고 싶으신가요? 아래 가이드를 따라주세요.
 
 1.  **저장소 복제:**
     ```bash
     git clone https://github.com/immanuelk1m/mystudy.git
-    cd your-repository
+    cd mystudy
     ```
 
 2.  **의존성 설치:**
-    `Makefile`에 정의된 명령어를 사용하여 프론트엔드와 백엔드의 의존성을 각각 설치합니다.
+    `Makefile`에 미리 준비된 명령어로 프론트엔드와 백엔드에 필요한 모든 것들을 한 번에 설치할 수 있습니다.
 
     ```bash
-    # 백엔드 의존성 설치 (uv 사용)
-    make install-backend-deps
-
-    # 프론트엔드 의존성 설치 (npm 사용)
-    make install-frontend-deps
+    # 전체 의존성 설치
+    make install
     ```
 
 3.  **환경 변수 설정:**
-    `backend/.env.example` 파일을 복사하여 `backend/.env` 파일을 생성하고, 필요한 환경 변수(예: Google API 키)를 설정합니다.
+    `backend/.env.example` 파일을 복사해서 `backend/.env` 파일을 만들어 주세요. 그리고 파일 안에 있는 Google API 키 같은 필요한 정보들을 채워주시면 됩니다.
 
 4.  **개발 서버 실행:**
-    `Makefile`의 `dev` (또는 `run`) 명령어를 사용하여 프론트엔드와 백엔드 서버를 동시에 실행합니다.
+    이제 모든 준비가 끝났습니다! 아래 명령어로 프론트엔드와 백엔드 서버를 동시에 실행해 보세요.
 
     ```bash
     make dev
     ```
 
-    *   프론트엔드 서버: `http://localhost:3000`
-    *   백엔드 서버: `http://localhost:8000`
+    -   프론트엔드 서버: `http://localhost:3000`
+    -   백엔드 서버: `http://localhost:8000`
 
-## 📂 5. 프로젝트 구조
+## 📂 프로젝트 구조 엿보기
 
-*   **`frontend/`**: React와 TypeScript로 구현된 사용자 인터페이스(UI) 관련 코드가 위치합니다. 사용자가 직접 상호작용하는 모든 화면과 컴포넌트가 포함됩니다.
-*   **`backend/`**: FastAPI로 구현된 API 서버 및 비즈니스 로직 관련 코드가 위치합니다. AI 모델 연동, 데이터 처리, 사용자 인증 등 핵심 로직을 담당합니다.
+*   **`frontend/`**: 여러분이 화면에서 보고 누르는 모든 것들이 이곳, React와 TypeScript로 만들어졌습니다.
+*   **`backend/`**: AI 모델 연동, 데이터 처리 등 똑똑한 기능들은 모두 이곳, FastAPI(Python)에서 담당하고 있습니다.
