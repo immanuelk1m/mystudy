@@ -2,7 +2,7 @@
 
 ## 🚀 데모 영상
 
-<video src="demo/demo.mp4" width="100%" controls></video>
+<video src="https://github.com/immanuelk1m/mystudy/raw/main/demo/demo.mp4" width="100%" controls></video>
 
 ## 📝 1. 프로젝트 개요
 
@@ -47,7 +47,7 @@
 
 1.  **저장소 복제:**
     ```bash
-    git clone https://github.com/your-username/your-repository.git
+    git clone https://github.com/immanuelk1m/mystudy.git
     cd your-repository
     ```
 
