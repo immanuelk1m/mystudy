@@ -331,3 +331,113 @@ async def generate_chapter_from_pdf_text(text_content: str, original_pdf_filenam
         # import traceback
         # traceback.print_exc()
         return None
+
+async def classify_pdf_text(text_content: str, existing_classes: List[str]) -> Optional[str]:
+    """
+    Analyzes the text content and classifies it into one of the existing classes
+    or suggests a new class if no suitable match is found.
+
+    Args:
+        text_content: The text extracted from the PDF.
+        existing_classes: A list of existing class titles (e.g., from notebooks.json).
+
+    Returns:
+        A string representing the determined class name, or None if an error occurs.
+    """
+    if not text_content:
+        return None
+
+    parser = StrOutputParser()
+
+    classes_str = "\n - ".join(existing_classes)
+    prompt_template = ChatPromptTemplate.from_messages([
+        ("system", "You are an expert academic librarian. Your task is to analyze the provided text and determine the most appropriate subject class for it. "
+                   "You are given a list of existing classes. First, try to classify the document into one of these existing classes. "
+                   f"Existing classes:\n - {classes_str}\n\n"
+                   "If the text fits well into one of the existing classes, respond with that exact class name. "
+                   "If the text represents a new, distinct topic not covered by the existing classes, suggest a new, concise class name (e.g., 'Quantum Mechanics', 'Ancient Roman History'). "
+                   "Respond ONLY with the single, most appropriate class name and nothing else."),
+        ("human", "Please classify the following text:\n\n--BEGIN TEXT CONTENT--\n{text_content}\n--END TEXT CONTENT--")
+    ])
+
+    chain = prompt_template | llm | parser
+
+    try:
+        # Use a portion of the text to keep the request focused and efficient for classification
+        text_for_prompt = text_content[:15000] if len(text_content) > 15000 else text_content
+        
+        classification = await chain.ainvoke({"text_content": text_for_prompt})
+        
+        # Clean up the output
+        classification = classification.strip().replace('"', '').replace("'", "")
+        if classification.lower().startswith("class:"):
+            classification = classification[len("class:"):].strip()
+            
+        return classification if classification else None
+
+    except Exception as e:
+        print(f"Error classifying text with LLM: {e}")
+        return None
+async def segment_text_into_chapters(text_content: str, document_class: str) -> Optional[List[str]]:
+    """
+    Segments the given text into meaningful chapters based on the document's class.
+
+    Args:
+        text_content: The full text content of the document.
+        document_class: The classification of the document (e.g., 'Economics', 'History').
+
+    Returns:
+        A list of strings, where each string is the text of a chapter, or None on error.
+    """
+    if not text_content:
+        return None
+
+    # We expect a simple list of strings as output, so a basic parser is sufficient.
+    # The real magic is in the prompt.
+    parser = StrOutputParser()
+
+    # The prompt needs to be carefully engineered to guide the LLM.
+    # We ask for the output to be a JSON array of strings for robust parsing.
+    prompt_template = ChatPromptTemplate.from_messages([
+        ("system", "You are an expert in content analysis and structuring. Your task is to segment a long text document into logical, semantically complete chapters. "
+                   "Consider the document's overall topic, which is '{document_class}'. "
+                   "Each chapter should represent a coherent sub-topic or section of the main content. Avoid creating chapters that are too short (e.g., just a few sentences) or excessively long. "
+                   "The output MUST be a JSON-formatted array of strings, where each string is the full text of a chapter. "
+                   "For example: [\"Chapter 1 text...\", \"Chapter 2 text...\", \"Chapter 3 text...\"]"
+                   "Do not include any other text or explanation outside of this JSON array."),
+        ("human", "Please segment the following text into chapters:\n\n--BEGIN TEXT CONTENT--\n{text_content}\n--END TEXT CONTENT--")
+    ])
+
+    chain = prompt_template | llm | parser
+
+    try:
+        raw_output = await chain.ainvoke({
+            "text_content": text_content,
+            "document_class": document_class
+        })
+        
+        # The output should be a JSON string representing a list.
+        # We'll parse it to get the actual list of strings.
+        import json
+        # A simple cleanup to remove potential markdown code fences
+        if raw_output.strip().startswith("```json"):
+            raw_output = raw_output.strip()[7:-3].strip()
+        elif raw_output.strip().startswith("```"):
+             raw_output = raw_output.strip()[3:-3].strip()
+
+
+        chapters = json.loads(raw_output)
+        
+        if isinstance(chapters, list) and all(isinstance(c, str) for c in chapters):
+            return chapters
+        else:
+            print(f"Error: LLM output was not a list of strings after parsing. Got: {type(chapters)}")
+            return None
+
+    except json.JSONDecodeError as e:
+        print(f"Error decoding JSON from LLM output: {e}")
+        print(f"Raw LLM output was: {raw_output}")
+        return None
+    except Exception as e:
+        print(f"Error segmenting text into chapters with LLM: {e}")
+        return None

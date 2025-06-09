@@ -251,3 +251,87 @@ def create_new_chapter_from_data(
         return None
         
     return str_next_chapter_num
+
+
+def create_notebook_and_chapters_from_processing(
+    notebook_title: str,
+    generated_contents: List[models.DocumentContent]
+) -> Optional[str]:
+    """
+    Creates a notebook (or gets an existing one) and then creates all chapters
+    from a list of generated DocumentContent objects.
+
+    Args:
+        notebook_title: The title for the notebook.
+        generated_contents: A list of DocumentContent models, each representing a chapter.
+
+    Returns:
+        The notebook ID if successful, otherwise None.
+    """
+    try:
+        # 1. Get or create the notebook
+        notebook = get_or_create_notebook(notebook_title)
+        if not notebook:
+            print(f"Failed to get or create notebook with title: {notebook_title}")
+            return None
+        
+        notebook_id = notebook.id
+
+        # 2. Iterate through generated contents and create a chapter for each
+        for content_item in generated_contents:
+            # This logic is adapted from create_new_chapter_from_data
+            str_next_chapter_num, chapters_file_path, new_content_path, new_structure_path = _get_next_chapter_number_and_path_params(notebook_id)
+
+            # 2a. Save the new DocumentContent
+            if not _save_json(new_content_path, content_item.dict(exclude_none=True)):
+                print(f"Failed to save content for chapter {str_next_chapter_num} in notebook {notebook_id}")
+                continue # Or handle error more robustly
+
+            # 2b. Update the main chapter list
+            chapters_data = load_json(chapters_file_path)
+            if not chapters_data or 'chapters' not in chapters_data:
+                chapters_data = {'chapters': []}
+            
+            new_chapter_title = content_item.title if content_item.title else f"Chapter {str_next_chapter_num}"
+            chapters_data['chapters'].append(new_chapter_title)
+            if not _save_json(chapters_file_path, chapters_data):
+                print(f"Failed to update chapter list for notebook {notebook_id}")
+                continue
+
+            # 2c. Create the structure file
+            # The PDF path might not be directly available here in the same way,
+            # so we'll create a placeholder or extract from metadata if possible.
+            original_pdf_filename = "source.pdf" # Default
+            if "Source: " in content_item.metadata:
+                # Attempt to parse filename from metadata string like "Source: my_file.pdf, Text length: 12345 chars"
+                try:
+                    original_pdf_filename = content_item.metadata.split(',')[0].replace('Source: ', '').strip()
+                except Exception:
+                    pass # Keep default if parsing fails
+
+            structure_content = [{
+                "name": original_pdf_filename,
+                "type": "file",
+                "path": f"/static/uploads/{notebook_id}/{original_pdf_filename}" # Placeholder path
+            }]
+            if not _save_json(new_structure_path, structure_content):
+                print(f"Failed to save structure for chapter {str_next_chapter_num} in notebook {notebook_id}")
+                continue
+        
+        # 3. Update the filesCount for the notebook
+        final_chapters_data = load_json(os.path.join(DATA_DIR, 'chapters', f'{notebook_id}.json'))
+        files_count = len(final_chapters_data.get('chapters', []))
+        
+        all_notebooks = load_json(os.path.join(DATA_DIR, 'notebooks.json'))
+        for nb in all_notebooks:
+            if nb['id'] == notebook_id:
+                nb['filesCount'] = files_count
+                nb['lastUpdated'] = datetime.now().isoformat()
+                break
+        _save_json(os.path.join(DATA_DIR, 'notebooks.json'), all_notebooks)
+
+        return notebook_id
+
+    except Exception as e:
+        print(f"An error occurred during notebook and chapter creation from processing: {e}")
+        return None
