@@ -61,7 +61,7 @@ async def process_single_pdf(temp_pdf_path: str, original_filename: str):
     try:
         # Run the langgraph pipeline
         # The run_graph function now encapsulates all processing steps.
-        result = run_graph(temp_pdf_path)
+        result = await run_graph(temp_pdf_path)
         print(f"[TASK SUCCESS] langgraph processing finished for {original_filename}.")
         print(f"Final state: {result}")
 

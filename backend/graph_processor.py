@@ -31,7 +31,7 @@ def start_processing(state: ProcessingState) -> ProcessingState:
         state['pdf_text'] = text
     return state
 
-def classify_document(state: ProcessingState) -> ProcessingState:
+async def classify_document(state: ProcessingState) -> ProcessingState:
     print("---문서 분류 중---")
     pdf_text = state.get('pdf_text')
     if not pdf_text:
@@ -46,7 +46,7 @@ def classify_document(state: ProcessingState) -> ProcessingState:
         existing_classes = [notebook['title'] for notebook in notebooks_data]
 
         # AI 서비스를 호출하여 문서 분류
-        classification_result = asyncio.run(ai_services.classify_pdf_text(pdf_text, existing_classes))
+        classification_result = await ai_services.classify_pdf_text(pdf_text, existing_classes)
         
         if classification_result:
             print(f"문서 분류 결과: {classification_result}")
@@ -64,7 +64,7 @@ def classify_document(state: ProcessingState) -> ProcessingState:
         
     return state
 
-def segment_chapters(state: ProcessingState) -> ProcessingState:
+async def segment_chapters(state: ProcessingState) -> ProcessingState:
     print("---챕터 분할 중---")
     pdf_text = state.get('pdf_text')
     document_class = state.get('document_class', 'Unclassified')
@@ -78,7 +78,7 @@ def segment_chapters(state: ProcessingState) -> ProcessingState:
     
     try:
         # AI 서비스를 호출하여 텍스트를 챕터로 분할
-        chapters_result = asyncio.run(ai_services.segment_text_into_chapters(pdf_text, document_class))
+        chapters_result = await ai_services.segment_text_into_chapters(pdf_text, document_class)
         
         if chapters_result:
             print(f"{len(chapters_result)}개의 챕터로 성공적으로 분할했습니다.")
@@ -93,7 +93,7 @@ def segment_chapters(state: ProcessingState) -> ProcessingState:
         
     return state
 
-def generate_chapter_content(state: ProcessingState) -> ProcessingState:
+async def generate_chapter_content(state: ProcessingState) -> ProcessingState:
     print("---챕터별 콘텐츠 생성 중---")
     chapters = state.get('segmented_chapters', [])
     pdf_path = state.get('pdf_file_path', 'unknown.pdf')
@@ -104,23 +104,23 @@ def generate_chapter_content(state: ProcessingState) -> ProcessingState:
         state['generated_content'] = []
         return state
 
-    generated_contents = []
-    # 비동기적으로 각 챕터 처리
-    # asyncio.run을 사용하여 각 코루틴을 실행합니다.
-    # 실제 프로덕션 환경에서는 asyncio.gather를 사용하여 병렬로 실행하는 것이 더 효율적일 수 있습니다.
-    for i, chapter_text in enumerate(chapters):
-        print(f"챕터 {i+1}/{len(chapters)} 콘텐츠 생성 시작...")
-        try:
-            # ai_services.generate_chapter_from_pdf_text가 코루틴이므로 asyncio.run으로 실행
-            content = asyncio.run(ai_services.generate_chapter_from_pdf_text(chapter_text, original_filename))
-            if content:
-                generated_contents.append(content)
-                print(f"챕터 {i+1} 콘텐츠 생성 완료.")
-            else:
-                print(f"챕터 {i+1} 콘텐츠 생성에 실패했습니다.")
-        except Exception as e:
-            print(f"챕터 {i+1} 콘텐츠 생성 중 오류 발생: {e}")
+    tasks = []
+    for chapter_text in chapters:
+        tasks.append(ai_services.generate_chapter_from_pdf_text(chapter_text, original_filename))
+
+    print(f"{len(chapters)}개 챕터에 대한 콘텐츠 생성 작업 시작...")
+    generated_contents_results = await asyncio.gather(*tasks, return_exceptions=True)
     
+    generated_contents = []
+    for i, result in enumerate(generated_contents_results):
+        if isinstance(result, Exception):
+            print(f"챕터 {i+1} 콘텐츠 생성 중 오류 발생: {result}")
+        elif result:
+            generated_contents.append(result)
+            print(f"챕터 {i+1} 콘텐츠 생성 완료.")
+        else:
+            print(f"챕터 {i+1} 콘텐츠 생성에 실패했습니다.")
+
     state['generated_content'] = generated_contents
     print(f"총 {len(generated_contents)}개의 챕터에 대한 콘텐츠 생성을 완료했습니다.")
     return state
@@ -184,8 +184,9 @@ workflow.set_entry_point("start_processing")
 app = workflow.compile()
 
 # 그래프 실행 함수
-def run_graph(pdf_file_path: str):
+async def run_graph(pdf_file_path: str):
     # 'generated_content'는 operator.add에 의해 누적되므로 빈 리스트로 초기화해야 합니다.
     # 나머지 키는 첫 번째 노드에서 채워집니다.
     inputs = {"pdf_file_path": pdf_file_path, "generated_content": []}
-    return app.invoke(inputs)
+    final_state = await app.ainvoke(inputs)
+    return final_state

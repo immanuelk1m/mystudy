@@ -12,7 +12,7 @@ from . import models # Assuming models.py is in the same directory or accessible
 
 # Initialize the Gemini LLM
 # It will automatically use GOOGLE_API_KEY from the environment
-llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash-preview-05-20", temperature=0.7)
+llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash-preview-05-20", temperature=0.7, google_api_key=os.getenv("GOOGLE_API_KEY"))
 
 # --- PDF Processing ---
 def extract_text_from_pdf(pdf_file_path: str) -> str:
