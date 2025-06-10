@@ -209,85 +209,83 @@ class LLMGeneratedChapter(BaseModel):
     ai_notes: LLMAINotes = PydanticField(..., description="AI-generated notes (summary, key concepts, terms, outline).")
     quiz: List[LLMQuizQuestion] = PydanticField(..., description="A short quiz with 2-3 questions based on the text content.")
 
-async def generate_content_for_chapter(text_content: str, original_pdf_filename: str) -> Optional[models.DocumentContent]:
+async def generate_content_for_chapter(chapter_title: str, chapter_text: str, original_pdf_filename: str) -> Optional[models.DocumentContent]:
     """
     Analyzes a chapter's text and generates a structured DocumentContent object,
-    including a title, summary, and other AI-generated notes.
-    This function is designed to be more robust and replaces the older, more complex `generate_chapter_from_pdf_text`.
+    including summary, key concepts, important terms, outline, and a quiz.
+    The title is passed in directly from the holistic analysis step.
 
     Args:
-        text_content: The text of the chapter.
+        chapter_title: The title for the chapter.
+        chapter_text: The text content of the chapter.
         original_pdf_filename: The filename of the source PDF for metadata.
 
     Returns:
         A `models.DocumentContent` object or None if generation fails.
     """
-    if not text_content:
-        print("[CONTENT GEN] Error: No text content provided.")
+    if not chapter_text:
+        print("[CONTENT GEN] Error: No chapter text provided.")
         return None
 
-    # We will generate a title and AI Notes (summary, key concepts, etc.)
-    # We are simplifying the model for now to ensure reliability. The LLM will
-    # produce a title and an AINotes object. The rest will be constructed.
-    class LLMChapterTitleAndSummary(BaseModel):
-        title: str = PydanticField(..., description="A concise and relevant title for the chapter based on the text.")
-        summary: str = PydanticField(..., description="A concise summary of the provided text content.")
-
-    parser = JsonOutputParser(pydantic_object=LLMChapterTitleAndSummary)
+    # Use the comprehensive LLMGeneratedChapter model for the output.
+    parser = JsonOutputParser(pydantic_object=LLMGeneratedChapter)
 
     prompt_template = ChatPromptTemplate.from_messages([
-        ("system", "You are an expert academic assistant. Your task is to analyze the provided text and generate a concise title and a summary for it. "
-                   "Format your response as a JSON object with 'title' and 'summary' keys, adhering to the following Pydantic schema:\n{format_instructions}"),
-        ("human", "Please generate a title and summary for the following text:\n\n--BEGIN TEXT CONTENT--\n{text_content}\n--END TEXT CONTENT--")
+        ("system", "You are an expert academic assistant. Your task is to analyze the provided text content and generate a complete, structured chapter document. "
+                   "The document must include: "
+                   "1. A concise and relevant title (you can refine the provided one if necessary). "
+                   "2. Metadata including the source PDF filename and text length. "
+                   "3. The full content broken down into logical blocks (headings, paragraphs). "
+                   "4. Comprehensive AI Notes: a summary, 3-5 key concepts, 5-7 important terms, and a hierarchical outline. "
+                   "5. A quiz with 2-3 multiple-choice questions to test understanding. "
+                   "Ensure your entire response is a single JSON object that strictly adheres to the following Pydantic schema: \n{format_instructions}"),
+        ("human", "The chapter is titled '{chapter_title}'. The source PDF is '{original_pdf_filename}'. "
+                  "Please generate a complete chapter document for the following text:\n\n--BEGIN TEXT CONTENT--\n{text_content}\n--END TEXT CONTENT--")
     ])
 
     chain = prompt_template | llm | parser
 
     try:
-        # Generate title and summary
-        generated_data = await chain.ainvoke({"text_content": text_content, "format_instructions": parser.get_format_instructions()})
+        generated_data = await chain.ainvoke({
+            "text_content": chapter_text,
+            "chapter_title": chapter_title,
+            "original_pdf_filename": original_pdf_filename,
+            "format_instructions": parser.get_format_instructions()
+        })
 
-        if not isinstance(generated_data, dict):
-            print(f"[CONTENT GEN] Error: LLM output was not a dictionary as expected. Received type: {type(generated_data)}")
-            print(f"Raw LLM output: {generated_data}")
-            return None
+        # The parser returns a dict. We can now build our DocumentContent from it.
+        llm_chapter = LLMGeneratedChapter(**generated_data)
 
-        title = generated_data.get("title", "Untitled Chapter")
-        summary = generated_data.get("summary", "")
-
-        # For now, we'll create a simple DocumentContent structure.
-        # The `documentContent` will just be a single paragraph block with the original text.
-        # The `aiNotes` will contain the generated summary.
-        # `quiz` and other complex parts are omitted for stability, as per the user request.
-
-        document_blocks = [
-            {"type": "paragraph", "content": text_content}
-        ]
-
+        # Convert LLM-specific models to our application's models
         ai_notes = models.AINotes(
-            summary=summary,
-            keyConcepts=[], # To be implemented later if needed
-            importantTerms=[], # To be implemented later if needed
-            outline=[] # To be implemented later if needed
+            summary=llm_chapter.ai_notes.summary,
+            keyConcepts=[models.KeyConcept(**kc.dict()) for kc in llm_chapter.ai_notes.key_concepts],
+            importantTerms=[models.ImportantTerm(**it.dict()) for it in llm_chapter.ai_notes.important_terms or []],
+            outline=[_convert_llm_outline_to_model_outline(item) for item in llm_chapter.ai_notes.outline]
         )
-        
-        metadata = f"Source: {original_pdf_filename}, Text length: {len(text_content)} chars"
 
-        # Construct the final DocumentContent object
-        # Ensure all required fields for DocumentContent are present.
-        document_content = models.DocumentContent(
-            title=title,
-            metadata=metadata,
-            documentContent=document_blocks,
-            aiNotes=ai_notes,
-            quiz=[] # Quiz is required, so provide an empty list.
-        )
+        quiz_items = [models.QuizItem(
+            question=q.question,
+            options=q.options,
+            answer=q.options[q.answer_index] if q.options and q.answer_index is not None else q.answer,
+            explanation=q.explanation
+        ) for q in llm_chapter.quiz]
         
-        print(f"[CONTENT GEN] Successfully generated content for chapter: '{title}'")
+        metadata_str = f"Source: {llm_chapter.metadata.source_pdf}, Text length: {llm_chapter.metadata.text_length_characters} chars"
+
+        document_content = models.DocumentContent(
+            title=llm_chapter.title,
+            metadata=metadata_str,
+            documentContent=[block.dict() for block in llm_chapter.document_content_blocks],
+            aiNotes=ai_notes,
+            quiz=quiz_items
+        )
+
+        print(f"[CONTENT GEN] Successfully generated full content for chapter: '{llm_chapter.title}'")
         return document_content
 
     except ValidationError as e:
-        print(f"[CONTENT GEN] Pydantic validation error in LLM output: {e}")
+        print(f"[CONTENT GEN] Pydantic validation error in LLM output: {e.json()}")
         return None
     except Exception as e:
         print(f"[CONTENT GEN] Unexpected error in generate_content_for_chapter: {e}")
@@ -403,4 +401,78 @@ async def segment_text_into_chapters(text_content: str, document_class: str) -> 
         return None
     except Exception as e:
         print(f"Error segmenting text into chapters with LLM: {e}")
+        return None
+
+# --- Holistic Structure Analysis ---
+
+class HolisticChapter(BaseModel):
+    chapter_title: str = PydanticField(..., description="The concise title for this chapter.")
+    source_pdf_filename: str = PydanticField(..., description="The original filename of the PDF this chapter's content comes from.")
+    chapter_content_summary: str = PydanticField(..., description="A brief summary of what this chapter will cover, based on the source text.")
+    # This represents the full text for the chapter, which will be passed to the next step.
+    chapter_full_text: str = PydanticField(..., description="The full, complete text content that makes up this chapter.")
+
+
+class HolisticStructure(BaseModel):
+    notebook_title: str = PydanticField(..., description="A single, unified, and concise title for the entire notebook, synthesizing all provided documents.")
+    chapters: List[HolisticChapter] = PydanticField(..., description="A logically ordered list of chapters that combines content from all provided PDFs into a coherent learning path.")
+
+
+async def analyze_holistic_structure(all_pdf_texts: List[Dict[str, str]]) -> Optional[HolisticStructure]:
+    """
+    Analyzes text from multiple PDFs to create a single, unified notebook title and a holistic chapter structure.
+
+    Args:
+        all_pdf_texts: A list of dictionaries, where each dict contains 'filename' and 'text'.
+
+    Returns:
+        A `HolisticStructure` object containing the unified title and chapter list, or None on failure.
+    """
+    if not all_pdf_texts:
+        return None
+
+    parser = JsonOutputParser(pydantic_object=HolisticStructure)
+
+    # Prepare the combined text for the prompt
+    combined_text_input = ""
+    for pdf_data in all_pdf_texts:
+        combined_text_input += f"--- START OF DOCUMENT: {pdf_data['filename']} ---\n\n"
+        combined_text_input += f"{pdf_data['text']}\n\n"
+        combined_text_input += f"--- END OF DOCUMENT: {pdf_data['filename']} ---\n\n"
+
+    prompt_template = ChatPromptTemplate.from_messages([
+        ("system", "You are an expert curriculum designer. Your task is to analyze the content from multiple documents and create a single, unified, and coherent study notebook structure. "
+                   "First, create a single, overarching title for the entire notebook that synthesizes the topics from all documents. "
+                   "Second, break down the combined content into a logical sequence of chapters. Each chapter should cover a specific sub-topic and be sourced from the provided texts. "
+                   "It is crucial that you identify which original document each chapter's content comes from. "
+                   "The final output must be a JSON object that strictly adheres to the following Pydantic schema:\n{format_instructions}"),
+        ("human", "Please create a holistic notebook structure from the following documents:\n\n{combined_text}")
+    ])
+
+    chain = prompt_template | llm | parser
+
+    try:
+        # Use a summary if the combined text is excessively long to avoid token limits.
+        # For now, we'll try with the full text.
+        text_for_prompt = combined_text_input
+        if len(text_for_prompt) > 100000: # Example threshold
+             print("Warning: Combined text is very long, consider summarization for performance.")
+
+
+        holistic_structure_data = await chain.ainvoke({
+            "combined_text": text_for_prompt,
+            "format_instructions": parser.get_format_instructions()
+        })
+        
+        # The parser should have already converted this to the Pydantic model.
+        # We can perform a final validation/instantiation here.
+        return HolisticStructure(**holistic_structure_data)
+
+    except ValidationError as e:
+        print(f"[HOLISTIC ANALYSIS] Pydantic validation error in LLM output: {e}")
+        return None
+    except Exception as e:
+        print(f"[HOLISTIC ANALYSIS] Unexpected error in analyze_holistic_structure: {e}")
+        import traceback
+        traceback.print_exc()
         return None

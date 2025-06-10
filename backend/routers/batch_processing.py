@@ -16,43 +16,42 @@ async def upload_and_process_pdfs(
     background_tasks: BackgroundTasks = BackgroundTasks()
 ):
     """
-    Accepts multiple PDF files, starts processing for each in the background,
-    and immediately returns a list of tracking run IDs.
+    Accepts multiple PDF files, saves them, and starts a single background task
+    to process them all together. Returns a single run ID for tracking the batch.
     """
     if not files:
         raise HTTPException(status_code=400, detail="No files were uploaded.")
 
-    run_ids = []
+    run_id = str(uuid.uuid4())
     temp_dir = "temp_pdf_uploads"
     os.makedirs(temp_dir, exist_ok=True)
 
+    temp_file_paths = []
+    original_filenames = []
     for file in files:
-        run_id = str(uuid.uuid4())
-        run_ids.append(run_id)
-        
-        temp_file_path = os.path.join(temp_dir, f"{run_id}_{file.filename}")
-
+        # Use a unique filename for each temporary file to avoid collisions
+        temp_file_path = os.path.join(temp_dir, f"{run_id}_{uuid.uuid4()}_{file.filename}")
         try:
             with open(temp_file_path, "wb") as buffer:
-                buffer.write(await file.read())
-            
-            # 각 파일에 대해 별도의 백그라운드 작업 시작
-            background_tasks.add_task(process_single_pdf, run_id, temp_file_path, file.filename)
-
+                content = await file.read()
+                buffer.write(content)
+            temp_file_paths.append(temp_file_path)
+            original_filenames.append(file.filename)
         except Exception as e:
-            # 특정 파일 저장 실패 시 로그를 남기고 계속 진행할 수 있습니다.
-            # 또는 즉시 오류를 반환하도록 선택할 수도 있습니다.
-            # 여기서는 로그를 남기고 다음 파일로 넘어갑니다.
+            # If any file fails to save, log it and decide whether to abort or continue
             print(f"Error saving temporary file {file.filename}: {e}")
-            # 필요하다면 실패한 파일 목록을 만들어 반환할 수도 있습니다.
-            continue # 다음 파일 처리로 넘어감
+            # For now, we'll abort if any file fails to save to ensure complete processing
+            raise HTTPException(status_code=500, detail=f"Failed to save file: {file.filename}")
 
-    if not run_ids:
+    if not temp_file_paths:
         raise HTTPException(status_code=500, detail="Failed to process any of the uploaded files.")
 
+    # Start one background task for the entire batch
+    background_tasks.add_task(process_all_pdfs_together, run_id, temp_file_paths, original_filenames)
+
     return {
-        "message": f"Started processing for {len(run_ids)} PDF file(s).",
-        "run_ids": run_ids
+        "message": f"Started processing for a batch of {len(files)} PDF file(s).",
+        "run_id": run_id
     }
 
 @router.get("/logs/{run_id}")
@@ -65,29 +64,31 @@ async def get_processing_log(run_id: str):
         raise HTTPException(status_code=404, detail="Log not found for the given run ID.")
     return log_data
 
-async def process_single_pdf(run_id: str, temp_pdf_path: str, original_filename: str):
+async def process_all_pdfs_together(run_id: str, temp_pdf_paths: List[str], original_filenames: List[str]):
     """
-    Processes a single PDF file using the langgraph pipeline.
+    Processes a batch of PDF files together using the langgraph pipeline.
     This function is called in the background.
     """
-    print(f"[TASK START] Run ID: {run_id} - Processing with langgraph: {original_filename}")
+    filenames_str = ", ".join(original_filenames)
+    print(f"[TASK START] Run ID: {run_id} - Processing batch with langgraph: {filenames_str}")
     
     try:
-        # Run the langgraph pipeline with the run_id
-        result = await run_graph(run_id=run_id, pdf_file_path=temp_pdf_path)
-        print(f"[TASK SUCCESS] Run ID: {run_id} - langgraph processing finished for {original_filename}.")
+        # The graph now receives a list of paths
+        result = await run_graph(run_id=run_id, pdf_file_paths=temp_pdf_paths)
+        print(f"[TASK SUCCESS] Run ID: {run_id} - langgraph processing finished for batch: {filenames_str}.")
         print(f"Final state: {result.get('final_result', 'No final result message.')}")
 
     except Exception as e:
-        print(f"[TASK EXCEPTION] Run ID: {run_id} - An unexpected error occurred while processing {original_filename}: {e}")
+        print(f"[TASK EXCEPTION] Run ID: {run_id} - An unexpected error occurred while processing batch {filenames_str}: {e}")
         import traceback
         traceback.print_exc()
     finally:
-        # Clean up the temporary file
-        if os.path.exists(temp_pdf_path):
-            try:
-                os.remove(temp_pdf_path)
-                print(f"[TASK INFO] Run ID: {run_id} - Cleaned up temporary file: {temp_pdf_path}")
-            except OSError as e_remove:
-                print(f"[TASK ERROR] Run ID: {run_id} - Error deleting temporary file {temp_pdf_path}: {e_remove}")
+        # Clean up all temporary files
+        for temp_path in temp_pdf_paths:
+            if os.path.exists(temp_path):
+                try:
+                    os.remove(temp_path)
+                    print(f"[TASK INFO] Run ID: {run_id} - Cleaned up temporary file: {temp_path}")
+                except OSError as e_remove:
+                    print(f"[TASK ERROR] Run ID: {run_id} - Error deleting temporary file {temp_path}: {e_remove}")
 

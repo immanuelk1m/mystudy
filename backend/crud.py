@@ -5,6 +5,8 @@ import uuid # For unique filenames
 from typing import List, Optional, Dict, Any, Tuple
 from fastapi import UploadFile # For type hinting
 from datetime import datetime # For timestamping new notebooks
+from pydantic import BaseModel
+
 
 from . import models # Use relative import
 
@@ -32,7 +34,20 @@ def load_json(file_path: str) -> Any:
         return None
     except json.JSONDecodeError as e:
         print(f"JSON decode error in {file_path}: {e}")
-        return None 
+        return None
+
+def convert_to_serializable(obj: Any) -> Any:
+    """
+    Recursively converts an object to a JSON-serializable format.
+    Pydantic models are converted to dictionaries.
+    """
+    if isinstance(obj, dict):
+        return {k: convert_to_serializable(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [convert_to_serializable(i) for i in obj]
+    if isinstance(obj, BaseModel):
+        return obj.dict()
+    return obj
 
 def _save_json(file_path: str, data: Any) -> bool:
     """Helper function to save data to a JSON file."""

@@ -1,6 +1,6 @@
 import json
 import asyncio
-from typing import TypedDict, Annotated, Sequence, List
+from typing import TypedDict, Annotated, Sequence, List, Dict, Any
 import operator
 from langgraph.graph import StateGraph, END
 from . import ai_services, crud # Import the ai_services and crud modules
@@ -9,10 +9,10 @@ import os
 # 상태 정의
 class ProcessingState(TypedDict):
     run_id: str
-    pdf_file_path: str
-    pdf_text: str
-    document_class: str
-    segmented_chapters: List[str]
+    pdf_file_paths: List[str]  # Changed from single path to list
+    all_pdf_texts: List[Dict[str, str]] # List of {'filename': str, 'text': str}
+    notebook_title: str # Unified title for the notebook
+    holistic_chapters: List[Dict[str, any]] # Chapters from the holistic analysis
     generated_content: Annotated[Sequence[dict], operator.add]
     log_entries: Annotated[Sequence[dict], operator.add]
     final_result: str
@@ -20,96 +20,69 @@ class ProcessingState(TypedDict):
 
 # 노드 구현
 def start_processing(state: ProcessingState) -> ProcessingState:
-    print("---PDF 처리 시작---")
-    print(f"입력 파일: {state['pdf_file_path']}")
-    # PDF 텍스트 추출
-    text = ai_services.extract_text_from_pdf(state['pdf_file_path'])
-    if not text:
-        # 텍스트 추출 실패 시 처리 중단 또는 오류 처리
-        print(f"오류: {state['pdf_file_path']}에서 텍스트를 추출할 수 없습니다.")
-        state['final_result'] = "Error: Could not extract text from PDF."
-        # END로 직접 이동하도록 상태를 조작할 수 있지만, 여기서는 간단히 다음 노드로 진행
-        state['pdf_text'] = ""
+    print("---배치 PDF 처리 시작---")
+    pdf_paths = state['pdf_file_paths']
+    print(f"입력 파일들: {', '.join(pdf_paths)}")
+    
+    all_texts = []
+    for pdf_path in pdf_paths:
+        text = ai_services.extract_text_from_pdf(pdf_path)
+        if text:
+            all_texts.append({
+                "filename": os.path.basename(pdf_path),
+                "text": text
+            })
+        else:
+            print(f"경고: {pdf_path}에서 텍스트를 추출하지 못했습니다. 이 파일은 건너뜁니다.")
+    
+    if not all_texts:
+        state['final_result'] = "Error: Could not extract text from any of the provided PDFs."
+        # This should ideally lead to an end state.
+        state['all_pdf_texts'] = []
     else:
-        state['pdf_text'] = text
-    snapshot = {k: v for k, v in state.items() if k not in ['pdf_text', 'log_entries']}
+        state['all_pdf_texts'] = all_texts
+
+    snapshot = {k: v for k, v in state.items() if k not in ['all_pdf_texts', 'log_entries']}
     log_entry = {"node": "start_processing", "status": "completed", "state_snapshot": snapshot}
     state['log_entries'].append(log_entry)
     return state
 
-async def classify_document(state: ProcessingState) -> ProcessingState:
-    print("---문서 분류 중---")
-    pdf_text = state.get('pdf_text')
-    if not pdf_text:
-        print("분류할 텍스트가 없어 이 단계를 건너뜁니다.")
-        state['document_class'] = "Unclassified"
+async def analyze_overall_structure(state: ProcessingState) -> ProcessingState:
+    print("---전체 구조 분석 중---")
+    all_pdf_texts = state.get('all_pdf_texts')
+
+    if not all_pdf_texts:
+        print("분석할 텍스트가 없어 이 단계를 건너뜁니다.")
+        state['notebook_title'] = "Untitled Notebook"
+        state['holistic_chapters'] = []
         return state
 
     try:
-        # 기존 노트북(클래스) 목록 로드
-        with open('backend/data/notebooks.json', 'r', encoding='utf-8') as f:
-            notebooks_data = json.load(f)
-        existing_classes = [notebook['title'] for notebook in notebooks_data]
-
-        # AI 서비스를 호출하여 문서 분류
-        classification_result = await ai_services.classify_pdf_text(pdf_text, existing_classes)
+        structure_result = await ai_services.analyze_holistic_structure(all_pdf_texts)
         
-        if classification_result:
-            print(f"문서 분류 결과: {classification_result}")
-            state['document_class'] = classification_result
+        if structure_result:
+            state['notebook_title'] = structure_result.notebook_title
+            # Pydantic model to dict for state
+            state['holistic_chapters'] = [chapter.dict() for chapter in structure_result.chapters]
+            print(f"통합 노트북 제목 '{state['notebook_title']}' 및 {len(state['holistic_chapters'])}개의 챕터 구조 생성 완료.")
         else:
-            print("문서 분류에 실패했습니다.")
-            state['document_class'] = "Classification Failed"
-
-    except FileNotFoundError:
-        print("오류: notebooks.json 파일을 찾을 수 없습니다. 기본값으로 설정합니다.")
-        state['document_class'] = "Unclassified (no notebook list)"
-    except Exception as e:
-        print(f"문서 분류 중 오류 발생: {e}")
-        state['document_class'] = "Classification Error"
-        
-    snapshot = {k: v for k, v in state.items() if k not in ['pdf_text', 'log_entries']}
-    log_entry = {"node": "classify_document", "status": "completed", "state_snapshot": snapshot}
-    state['log_entries'].append(log_entry)
-    return state
-
-async def segment_chapters(state: ProcessingState) -> ProcessingState:
-    print("---챕터 분할 중---")
-    pdf_text = state.get('pdf_text')
-    document_class = state.get('document_class', 'Unclassified')
-
-    if not pdf_text:
-        print("분할할 텍스트가 없어 이 단계를 건너뜁니다.")
-        state['segmented_chapters'] = []
-        return state
-
-    print(f"분류된 클래스 '{document_class}'에 대한 챕터 분할을 진행합니다.")
-    
-    try:
-        # AI 서비스를 호출하여 텍스트를 챕터로 분할
-        chapters_result = await ai_services.segment_text_into_chapters(pdf_text, document_class)
-        
-        if chapters_result:
-            print(f"{len(chapters_result)}개의 챕터로 성공적으로 분할했습니다.")
-            state['segmented_chapters'] = chapters_result
-        else:
-            print("챕터 분할에 실패했거나 챕터를 찾지 못했습니다.")
-            state['segmented_chapters'] = []
+            print("전체 구조 분석에 실패했습니다.")
+            state['notebook_title'] = "Analysis Failed"
+            state['holistic_chapters'] = []
 
     except Exception as e:
-        print(f"챕터 분할 중 오류 발생: {e}")
-        state['segmented_chapters'] = []
+        print(f"전체 구조 분석 중 오류 발생: {e}")
+        state['notebook_title'] = "Analysis Error"
+        state['holistic_chapters'] = []
         
-    snapshot = {k: v for k, v in state.items() if k not in ['pdf_text', 'log_entries']}
-    log_entry = {"node": "segment_chapters", "status": "completed", "state_snapshot": snapshot}
+    snapshot = {k: v for k, v in state.items() if k not in ['all_pdf_texts', 'log_entries']}
+    log_entry = {"node": "analyze_overall_structure", "status": "completed", "state_snapshot": snapshot}
     state['log_entries'].append(log_entry)
     return state
 
 async def generate_chapter_content(state: ProcessingState) -> ProcessingState:
-    print("---챕터별 콘텐츠 생성 중---")
-    chapters = state.get('segmented_chapters', [])
-    pdf_path = state.get('pdf_file_path', 'unknown.pdf')
-    original_filename = os.path.basename(pdf_path)
+    print("---통합 챕터별 콘텐츠 생성 중---")
+    chapters = state.get('holistic_chapters', [])
 
     if not chapters:
         print("콘텐츠를 생성할 챕터가 없습니다.")
@@ -117,9 +90,12 @@ async def generate_chapter_content(state: ProcessingState) -> ProcessingState:
         return state
 
     tasks = []
-    for chapter_text in chapters:
-        # This is the new, more reliable function we'll create.
-        tasks.append(ai_services.generate_content_for_chapter(chapter_text, original_filename))
+    for chapter_data in chapters:
+        tasks.append(ai_services.generate_content_for_chapter(
+            chapter_title=chapter_data['chapter_title'],
+            chapter_text=chapter_data['chapter_full_text'],
+            original_pdf_filename=chapter_data['source_pdf_filename']
+        ))
 
     print(f"{len(chapters)}개 챕터에 대한 콘텐츠 생성 작업 시작...")
     generated_contents_results = await asyncio.gather(*tasks, return_exceptions=True)
@@ -145,7 +121,7 @@ async def generate_chapter_content(state: ProcessingState) -> ProcessingState:
 
 def finish_processing(state: ProcessingState) -> ProcessingState:
     print("---모든 처리 완료 및 파일 저장 중---")
-    notebook_title = state.get('document_class')
+    notebook_title = state.get('notebook_title') # Use the new unified title
     generated_content = state.get('generated_content')
     run_id = state.get('run_id')
 
@@ -182,7 +158,9 @@ def finish_processing(state: ProcessingState) -> ProcessingState:
     
     # Save all accumulated logs to a file
     if run_id:
-        if not crud.save_run_log(run_id, state['log_entries']):
+        # Convert log entries to be JSON serializable before saving
+        serializable_logs = crud.convert_to_serializable(state['log_entries'])
+        if not crud.save_run_log(run_id, serializable_logs):
             print(f"Warning: Failed to save run log for run_id: {run_id}")
     else:
         print("Warning: run_id not found, skipping log saving.")
@@ -194,15 +172,13 @@ workflow = StateGraph(ProcessingState)
 
 # 노드 추가
 workflow.add_node("start_processing", start_processing)
-workflow.add_node("classify_document", classify_document)
-workflow.add_node("segment_chapters", segment_chapters)
+workflow.add_node("analyze_overall_structure", analyze_overall_structure) # New node
 workflow.add_node("generate_chapter_content", generate_chapter_content)
 workflow.add_node("finish_processing", finish_processing)
 
 # 엣지 연결
-workflow.add_edge("start_processing", "classify_document")
-workflow.add_edge("classify_document", "segment_chapters")
-workflow.add_edge("segment_chapters", "generate_chapter_content")
+workflow.add_edge("start_processing", "analyze_overall_structure")
+workflow.add_edge("analyze_overall_structure", "generate_chapter_content")
 workflow.add_edge("generate_chapter_content", "finish_processing")
 workflow.add_edge("finish_processing", END)
 
@@ -213,13 +189,56 @@ workflow.set_entry_point("start_processing")
 app = workflow.compile()
 
 # 그래프 실행 함수
-async def run_graph(run_id: str, pdf_file_path: str):
-    # 'generated_content'와 'log_entries'는 operator.add에 의해 누적되므로 빈 리스트로 초기화해야 합니다.
-    inputs = {
+# 그래프 실행 함수
+async def run_graph(run_id: str, pdf_file_paths: List[str]):
+    """
+    Runs the graph using the stream method, logging each step with a serializable state snapshot.
+    """
+    # 초기 상태 정의
+    state = {
         "run_id": run_id,
-        "pdf_file_path": pdf_file_path,
+        "pdf_file_paths": pdf_file_paths,
         "generated_content": [],
-        "log_entries": []
+        "log_entries": [],
+        "all_pdf_texts": [],
+        "notebook_title": "",
+        "holistic_chapters": [],
+        "final_result": ""
     }
-    final_state = await app.ainvoke(inputs)
+    run_logs = []
+    
+    # LangGraph 실행을 위한 설정
+    config = {"recursion_limit": 10}
+
+    final_state = {}
+    # app.stream을 사용하여 그래프 실행 및 각 단계 로깅
+    async for step in app.astream(state, config):
+        node_name = list(step.keys())[0]
+        state = list(step.values())[0]
+        final_state = state  # 마지막 상태를 계속 업데이트
+
+        # 상태 스냅샷을 직렬화 가능한 형식으로 변환
+        serializable_snapshot = crud.convert_to_serializable(state)
+        
+        log_entry = {
+            "node": node_name,
+            "status": "completed",
+            "state_snapshot": serializable_snapshot,
+        }
+        run_logs.append(log_entry)
+        print(f"--- Executing node: {node_name} ---")
+
+        # 오류 발생 시 조기 중단
+        if state.get("final_result", "").startswith("Error:"):
+            print(f"Stopping execution due to error after {node_name}.")
+            break
+            
+    # 실행 로그 저장
+    if run_id:
+        if not crud.save_run_log(run_id, run_logs):
+            print(f"Warning: Failed to save run log for run_id: {run_id}")
+    else:
+        print("Warning: run_id not found, skipping log saving.")
+
+    # 최종 상태 반환
     return final_state
