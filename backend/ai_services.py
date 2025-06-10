@@ -253,6 +253,37 @@ async def generate_content_for_chapter(chapter_title: str, chapter_text: str, or
             "format_instructions": parser.get_format_instructions()
         })
 
+        # Clean important_terms in generated_data before passing to LLMGeneratedChapter
+        if 'ai_notes' in generated_data and 'important_terms' in generated_data['ai_notes']:
+            raw_important_terms = generated_data['ai_notes'].get('important_terms', []) # Use .get for safety
+            if raw_important_terms is None: # Handle explicit null from LLM
+                raw_important_terms = []
+
+            cleaned_important_terms = []
+            for item in raw_important_terms:
+                if isinstance(item, str):
+                    cleaned_important_terms.append(
+                        models.ImportantTerm(term=item, definition="Placeholder: Definition to be reviewed or generated.").dict()
+                    )
+                elif isinstance(item, dict):
+                    # Ensure it has 'term'. 'definition' can be missing and handled by placeholder.
+                    if 'term' in item:
+                         cleaned_important_terms.append(
+                             models.ImportantTerm(term=item.get('term'), definition=item.get('definition', "Placeholder: Definition missing.")).dict()
+                         )
+                    else:
+                        # If term is missing, it's a malformed dict for our purposes.
+                        print(f"Warning: Malformed dict in important_terms (missing 'term'): {item}")
+                        cleaned_important_terms.append(
+                            models.ImportantTerm(term="Missing term", definition=item.get('definition', "Placeholder: Malformed item.")).dict()
+                        )
+                else:
+                    print(f"Warning: Unexpected item type in important_terms: {type(item)}, value: {item}")
+                    cleaned_important_terms.append(
+                         models.ImportantTerm(term=str(item), definition="Placeholder: Unexpected data type encountered.").dict()
+                    )
+            generated_data['ai_notes']['important_terms'] = cleaned_important_terms
+
         # The parser returns a dict. We can now build our DocumentContent from it.
         llm_chapter = LLMGeneratedChapter(**generated_data)
 
@@ -264,7 +295,7 @@ async def generate_content_for_chapter(chapter_title: str, chapter_text: str, or
             outline=[_convert_llm_outline_to_model_outline(item) for item in llm_chapter.ai_notes.outline]
         )
 
-        quiz_items = [models.QuizItem(
+        quiz_items = [models.QuizQuestion(
             question=q.question,
             options=q.options,
             answer=q.options[q.answer_index] if q.options and q.answer_index is not None else q.answer,
