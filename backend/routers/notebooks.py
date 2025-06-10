@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException, Query, UploadFile, File, Backgroun
 from typing import List, Optional, Dict, Any
 from .. import crud, models, ai_services # Use relative imports
 import os
+import logging # Add this import
 
 router = APIRouter(
     tags=["notebooks"],
@@ -35,12 +36,25 @@ async def read_document_content(
     notebook_id: str, 
     path: str = Query(..., description="Chapter number or path to content")
 ):
-    # Assuming 'path' parameter from frontend is the chapter number for now
-    # e.g., path="1", path="2"
-    content = crud.get_document_content(notebook_id, chapter_number=path)
-    if content is None:
-        raise HTTPException(status_code=404, detail=f"Content for notebook {notebook_id}, chapter {path} not found")
-    return content
+    try:
+        logging.info(f"Attempting to read content for notebook {notebook_id}, chapter {path}")
+        content = crud.get_document_content(notebook_id, chapter_number=path)
+
+        if content is None:
+            logging.warning(f"Content not found for notebook {notebook_id}, chapter {path}. Raising 404.")
+            raise HTTPException(status_code=404, detail=f"Content for notebook {notebook_id}, chapter {path} not found")
+
+        logging.info(f"Successfully retrieved content for notebook {notebook_id}, chapter {path}")
+        return content
+    except HTTPException as http_exc:
+        # Re-raise HTTPException directly so FastAPI handles it
+        logging.error(f"HTTPException in read_document_content for notebook {notebook_id}, chapter {path}: {http_exc.detail}")
+        raise http_exc
+    except Exception as e:
+        # Catch any other unexpected exceptions
+        logging.error(f"Unexpected error in read_document_content for notebook {notebook_id}, chapter {path}: {str(e)}", exc_info=True)
+        # Return a generic 500 error
+        raise HTTPException(status_code=500, detail=f"An unexpected error occurred while fetching content for notebook {notebook_id}, chapter {path}.")
 
 @router.get("/{notebook_id}/structure", response_model=List[models.FileStructureItem])
 async def read_file_structure(
