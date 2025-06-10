@@ -2,6 +2,7 @@ import json
 import re
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from backend.routers import notebooks, batch_processing
 from pathlib import Path
 import os
 
@@ -19,6 +20,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.include_router(notebooks.router, prefix="/api/notebooks", tags=["notebooks"])
+app.include_router(batch_processing.router, prefix="/api/batch-process-pdfs", tags=["batch-processing"])
 
 BASE_DIR = Path(__file__).resolve().parent
 DATA_DIR = BASE_DIR / "data"
@@ -59,25 +63,30 @@ async def get_notebook(notebook_id: str):
 
 @app.get("/api/notebooks/{notebook_id}/chapters")
 async def get_chapters(notebook_id: str):
-    """특정 노트북의 챕터 목록을 반환합니다."""
+    """특정 노트북의 '완전한' 챕터 목록만을 반환합니다."""
     try:
         data = read_json_file(os.path.join(DATA_DIR, "chapters", f"{notebook_id}.json"))
-        
-        # --- START: CRITICAL FIX ---
-        # 실제 파일 구조에 맞게 "chapters" 키에서 배열을 가져옵니다.
         chapter_titles = data.get("chapters", [])
-        if not isinstance(chapter_titles, list):
-             raise HTTPException(status_code=500, detail="Invalid chapter data format: 'chapters' is not a list.")
-        # --- END: CRITICAL FIX ---
 
-        corrected_chapters = []
+        if not isinstance(chapter_titles, list):
+            raise HTTPException(status_code=500, detail="Invalid chapter data format")
+
+        valid_chapters = []
         for title in chapter_titles:
             match = re.match(r"^\s*(\d+)", title)
             if match:
-                chapter_id = int(match.group(1))
-                corrected_chapters.append({"id": chapter_id, "title": title.strip()})
+                chapter_id = match.group(1)
+                
+                # --- START: CRITICAL FIX ---
+                # content와 structure 파일이 모두 존재하는지 확인합니다.
+                content_path = os.path.join(DATA_DIR, "content", notebook_id, f"{chapter_id}.json")
+                structure_path = os.path.join(DATA_DIR, "structure", notebook_id, f"{chapter_id}.json")
+
+                if os.path.exists(content_path) and os.path.exists(structure_path):
+                    valid_chapters.append({"id": int(chapter_id), "title": title.strip()})
+                # --- END: CRITICAL FIX ---
         
-        return corrected_chapters
+        return valid_chapters
     except HTTPException as e:
         raise e
     except Exception as e:
