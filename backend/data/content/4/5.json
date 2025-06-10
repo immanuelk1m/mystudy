@@ -1,0 +1,17 @@
+{
+  "title": "Consumer Choice: Income and Price Effects",
+  "metadata": "Source: eb57612f-26ce-4a34-8487-bc09abe21716_3 Consumer problem and demand curve.pdf, Text length: 1750 chars",
+  "documentContent": [
+    {
+      "type": "paragraph",
+      "content": "Example : Pepe’s optimal choice\n• Budget constraint : 5600 = 700𝑀 +1400𝑆\nUtility function : 𝑀𝑈𝑀 = \n1\n𝑀, 𝑀𝑈𝑆 = \n1\n𝑆\n• What is the optimal choice for M, S?\n\nExample : Pepe’s optimal choice\n• Now, let’s suppose that the income goes up to 11,200 won.\n\nExample : Pepe’s optimal choice\n•What if Pepe’s \nincome is \nexpanded?\nMeal tickets\nClothes\n8\n4\nIncome effect\n• Income effect and the characteristics of good\n• Normal goods : an increase in income causes an increase in demand (+)\n• Inferior goods : an increase in income causes a decrease in demand (-)\n• Luxury goods : an increase in income causes a bigger percentage increase in demand (++)\nExample : Pepe’s optimal choice\n• What if the price of M goes to 1400 won ?\n\nExample : Pepe’s optimal choice\nMeal ticket = 4 - Shirt\nMeal tickets\nShirts\n8\n4\n4\nExample : Pepe’s optimal choice\n• If the price of S falls to 700 won ?\n\nExample : Pepe’s optimal choice\nMeal ticket = 8 - Shirt\nMeal tickets\nShirts\n8\n8\nExample : Pepe’s optimal choice\n• When a price changes,\n• Substitution effect : change in relative price (the slope in budget constraint)\n• Income effect (of a price change) : shift in real purchasing power\n\nPrice effect\n• Price effect : an increase in price causes an decrease in demand (-)\n* Special case : Giffen goods – price effect (+)\n• Relationship between goods\n• Substitute goods : an increase in the demand of A causes an decrease in the demand of B (-)\n• Complementary goods : an increase in the demand of A causes an increase in the demand of B (+)\n• Then, consider price effect on other good\n• On substitute goods : an increase in the price of A causes an increase in the demand of B (+)\n• On complementary goods : an increase in the price of A causes an decrease in the demand of B (-)"
+    }
+  ],
+  "aiNotes": {
+    "summary": "The text analyzes consumer behavior using 'Pepe's optimal choice' as an example, demonstrating how to determine an optimal choice given a budget constraint and utility function. It explores the income effect, categorizing goods as normal, inferior, or luxury based on how demand changes with income. Furthermore, it details the price effect, explaining it as a combination of the substitution effect (change in relative price) and the income effect (change in real purchasing power), while also mentioning Giffen goods as a special case. Finally, it discusses the relationship between goods, defining substitute and complementary goods and how price changes in one affect the demand for the other.",
+    "keyConcepts": [],
+    "importantTerms": [],
+    "outline": []
+  },
+  "quiz": []
+}

@@ -1,0 +1,17 @@
+{
+  "title": "Cost Function Derivation Practice Problem",
+  "metadata": "Source: 5559e947-9214-49ca-9c5b-164ab9a46853_4 Firm optimal choice and supply curve.pdf, Text length: 560 chars",
+  "documentContent": [
+    {
+      "type": "paragraph",
+      "content": "Practice\nI assume the form of the production function like this.\n  Q = 2 X^(1/2)\n where Q is the output, X is input.\n *Suppose that the fixed cost is 100, and the price of each input(variable \ncost) is 10.\nPractice\n1. Derive the equation for the total cost function to input.\n2. Derive the equation for the total cost function to output.\n3. Derive the equation for the average fixed cost.\n4. Derive the equation for the average variable cost.\n5. Derive the equation for the average total cost.\n6. Derive the equation for the marginal cost to output.\nThank you!"
+    }
+  ],
+  "aiNotes": {
+    "summary": "This text outlines a practice problem for deriving various cost functions based on a given production function `Q = 2 X^(1/2)`. It specifies a fixed cost of 100 and an input price of 10, then tasks the user with deriving equations for total cost (to input and output), average fixed cost, average variable cost, average total cost, and marginal cost (to output).",
+    "keyConcepts": [],
+    "importantTerms": [],
+    "outline": []
+  },
+  "quiz": []
+}
