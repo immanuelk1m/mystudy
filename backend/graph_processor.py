@@ -17,21 +17,6 @@ class ProcessingState(TypedDict):
     log_entries: Annotated[Sequence[dict], operator.add]
     final_result: str
 
-def _log_node_state(node_name: str, state: ProcessingState) -> ProcessingState:
-   """Helper function to log the state after a node's execution, excluding large fields."""
-   state_to_log = state.copy()
-   # Exclude large fields to keep logs concise
-   state_to_log.pop('pdf_text', None)
-   state_to_log.pop('segmented_chapters', None)
-   state_to_log.pop('generated_content', None) # Also exclude this as it can be large
-   
-   log_entry = {
-       "node": node_name,
-       "status": "completed",
-       "state_snapshot": state_to_log
-   }
-   state['log_entries'] = state.get('log_entries', []) + [log_entry]
-   return state
 
 # 노드 구현
 def start_processing(state: ProcessingState) -> ProcessingState:
@@ -47,7 +32,10 @@ def start_processing(state: ProcessingState) -> ProcessingState:
         state['pdf_text'] = ""
     else:
         state['pdf_text'] = text
-    return _log_node_state("start_processing", state)
+    snapshot = {k: v for k, v in state.items() if k not in ['pdf_text', 'log_entries']}
+    log_entry = {"node": "start_processing", "status": "completed", "state_snapshot": snapshot}
+    state['log_entries'].append(log_entry)
+    return state
 
 async def classify_document(state: ProcessingState) -> ProcessingState:
     print("---문서 분류 중---")
@@ -80,7 +68,10 @@ async def classify_document(state: ProcessingState) -> ProcessingState:
         print(f"문서 분류 중 오류 발생: {e}")
         state['document_class'] = "Classification Error"
         
-    return _log_node_state("classify_document", state)
+    snapshot = {k: v for k, v in state.items() if k not in ['pdf_text', 'log_entries']}
+    log_entry = {"node": "classify_document", "status": "completed", "state_snapshot": snapshot}
+    state['log_entries'].append(log_entry)
+    return state
 
 async def segment_chapters(state: ProcessingState) -> ProcessingState:
     print("---챕터 분할 중---")
@@ -109,7 +100,10 @@ async def segment_chapters(state: ProcessingState) -> ProcessingState:
         print(f"챕터 분할 중 오류 발생: {e}")
         state['segmented_chapters'] = []
         
-    return _log_node_state("segment_chapters", state)
+    snapshot = {k: v for k, v in state.items() if k not in ['pdf_text', 'log_entries']}
+    log_entry = {"node": "segment_chapters", "status": "completed", "state_snapshot": snapshot}
+    state['log_entries'].append(log_entry)
+    return state
 
 async def generate_chapter_content(state: ProcessingState) -> ProcessingState:
     print("---챕터별 콘텐츠 생성 중---")
@@ -141,7 +135,10 @@ async def generate_chapter_content(state: ProcessingState) -> ProcessingState:
 
     state['generated_content'] = generated_contents
     print(f"총 {len(generated_contents)}개의 챕터에 대한 콘텐츠 생성을 완료했습니다.")
-    return _log_node_state("generate_chapter_content", state)
+    snapshot = {k: v for k, v in state.items() if k not in ['pdf_text', 'log_entries']}
+    log_entry = {"node": "generate_chapter_content", "status": "completed", "state_snapshot": snapshot}
+    state['log_entries'].append(log_entry)
+    return state
 
 
 def finish_processing(state: ProcessingState) -> ProcessingState:
@@ -150,7 +147,7 @@ def finish_processing(state: ProcessingState) -> ProcessingState:
     generated_content = state.get('generated_content')
     run_id = state.get('run_id')
 
-    if not notebook_title or not generated_content:
+    if not notebook_title or generated_content is None:
         error_msg = "최종 결과를 저장하기 위한 정보(노트북 제목 또는 생성된 콘텐츠)가 부족합니다."
         print(error_msg)
         state['final_result'] = f"Error: {error_msg}"
@@ -177,16 +174,18 @@ def finish_processing(state: ProcessingState) -> ProcessingState:
             state['final_result'] = f"Error: {error_msg}"
 
     # Log the final state before saving the logs
-    final_logged_state = _log_node_state("finish_processing", state)
+    snapshot = {k: v for k, v in state.items() if k not in ['pdf_text', 'log_entries']}
+    log_entry = {"node": "finish_processing", "status": "completed", "state_snapshot": snapshot}
+    state['log_entries'].append(log_entry)
     
     # Save all accumulated logs to a file
     if run_id:
-        if not crud.save_run_log(run_id, final_logged_state['log_entries']):
+        if not crud.save_run_log(run_id, state['log_entries']):
             print(f"Warning: Failed to save run log for run_id: {run_id}")
     else:
         print("Warning: run_id not found, skipping log saving.")
         
-    return final_logged_state
+    return state
 
 # 그래프 정의
 workflow = StateGraph(ProcessingState)
