@@ -71,12 +71,28 @@ def get_or_create_notebook(title: str) -> models.Notebook:
             return models.Notebook(**nb_data)
 
     # If not found, create a new notebook
-    new_notebook_id = str(uuid.uuid4())
+    if not notebooks_list:
+        new_notebook_id = "1"
+    else:
+        # Find the max existing ID and add 1
+        max_id = 0
+        for nb in notebooks_list:
+            try:
+                # Make sure to handle non-integer IDs gracefully
+                current_id = int(nb.get('id', 0))
+                if current_id > max_id:
+                    max_id = current_id
+            except (ValueError, TypeError):
+                # This notebook has a non-integer ID, so we skip it.
+                # Consider logging this event if it's unexpected.
+                continue
+        new_notebook_id = str(max_id + 1)
+        
     new_notebook_data = {
         "id": new_notebook_id,
         "title": title,
         "description": f"Notebook for {title}.", # Default description
-        "lastUpdated": datetime.now().isoformat(), # Ensure datetime is imported
+        "lastUpdated": datetime.now().isoformat(),
         "filesCount": 0
     }
     

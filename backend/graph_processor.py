@@ -118,7 +118,8 @@ async def generate_chapter_content(state: ProcessingState) -> ProcessingState:
 
     tasks = []
     for chapter_text in chapters:
-        tasks.append(ai_services.generate_chapter_from_pdf_text(chapter_text, original_filename))
+        # This is the new, more reliable function we'll create.
+        tasks.append(ai_services.generate_content_for_chapter(chapter_text, original_filename))
 
     print(f"{len(chapters)}개 챕터에 대한 콘텐츠 생성 작업 시작...")
     generated_contents_results = await asyncio.gather(*tasks, return_exceptions=True)

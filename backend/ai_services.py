@@ -209,142 +209,80 @@ class LLMGeneratedChapter(BaseModel):
     ai_notes: LLMAINotes = PydanticField(..., description="AI-generated notes (summary, key concepts, terms, outline).")
     quiz: List[LLMQuizQuestion] = PydanticField(..., description="A short quiz with 2-3 questions based on the text content.")
 
-async def generate_chapter_from_pdf_text(text_content: str, original_pdf_filename: str) -> Optional[models.DocumentContent]:
-    """Generates full chapter content (title, metadata, content blocks, AINotes, quiz) from PDF text using Gemini."""
+async def generate_content_for_chapter(text_content: str, original_pdf_filename: str) -> Optional[models.DocumentContent]:
+    """
+    Analyzes a chapter's text and generates a structured DocumentContent object,
+    including a title, summary, and other AI-generated notes.
+    This function is designed to be more robust and replaces the older, more complex `generate_chapter_from_pdf_text`.
+
+    Args:
+        text_content: The text of the chapter.
+        original_pdf_filename: The filename of the source PDF for metadata.
+
+    Returns:
+        A `models.DocumentContent` object or None if generation fails.
+    """
     if not text_content:
+        print("[CONTENT GEN] Error: No text content provided.")
         return None
 
-    parser = JsonOutputParser(pydantic_object=LLMGeneratedChapter)
+    # We will generate a title and AI Notes (summary, key concepts, etc.)
+    # We are simplifying the model for now to ensure reliability. The LLM will
+    # produce a title and an AINotes object. The rest will be constructed.
+    class LLMChapterTitleAndSummary(BaseModel):
+        title: str = PydanticField(..., description="A concise and relevant title for the chapter based on the text.")
+        summary: str = PydanticField(..., description="A concise summary of the provided text content.")
+
+    parser = JsonOutputParser(pydantic_object=LLMChapterTitleAndSummary)
 
     prompt_template = ChatPromptTemplate.from_messages([
-        ("system", f"You are an expert content creator and academic assistant. Your task is to analyze the provided text, which was extracted from a PDF named '{original_pdf_filename}', and generate a complete, well-structured chapter. "
-                   "The chapter should include: a concise title, metadata, a series of document content blocks, comprehensive AI Notes, and a short quiz. "
-                   "Please adhere strictly to the following field names and structures:\n"
-                   "- **metadata**: An object with `source_pdf` (string) and `text_length_characters` (integer).\n"
-                   "- **document_content_blocks**: A list of objects. Each object must have a `block_type` (e.g., 'paragraph', 'heading') and `text` (string). For headings, also include `level` (integer).\n"
-                   "- **ai_notes**: An object containing:\n"
-                   "  - `summary`: (string)\n"
-                   "  - `key_concepts`: A list of objects, each with `term` (string) and `definition` (string or object with `easy`, `medium`, `hard` fields).\n"
-                   "  - `important_terms`: A list of objects, each with `term` (string) and `definition` (string).\n"
-                   "  - `outline`: A list of objects, each with `text` (string), `id` (string), and optional `children` (a list of nested outline objects).\n"
-                   "- **quiz**: A list of objects. Each object must have `question` (string), `answer` (string), and `type` (e.g., 'short_answer', 'multiple_choice'). For multiple choice, include `options` (list of strings) and `answer_index` (integer).\n"
-                   "Format your entire response as a single JSON object that strictly adheres to the following Pydantic schema: \n{{format_instructions}}"),
-        ("human", "Please generate a full chapter from the following text content: \n\n--BEGIN TEXT CONTENT--\n{text_content}\n--END TEXT CONTENT--\n\nRemember to include a title, metadata (with 'text_length_characters'), document_content_blocks (with 'block_type' and 'text'), ai_notes (with important_terms as objects and outline items with 'text' and 'children'), and a quiz (with 'type' for each question) in your response.")
+        ("system", "You are an expert academic assistant. Your task is to analyze the provided text and generate a concise title and a summary for it. "
+                   "Format your response as a JSON object with 'title' and 'summary' keys, adhering to the following Pydantic schema:\n{format_instructions}"),
+        ("human", "Please generate a title and summary for the following text:\n\n--BEGIN TEXT CONTENT--\n{text_content}\n--END TEXT CONTENT--")
     ])
 
-    def _log_llm_output_before_parsing(item):
-        print("--- LLM RAW OUTPUT START ---")
-        if hasattr(item, 'content'): # AIMessage
-            print(item.content)
-        else: # Raw string or other type
-            print(item)
-        print("--- LLM RAW OUTPUT END ---")
-        return item
-    
-    chain = prompt_template | llm | RunnableLambda(_log_llm_output_before_parsing) | parser
+    chain = prompt_template | llm | parser
 
     try:
-        # Calculate text length for metadata
-        text_length = len(text_content)
-        # metadata_info = f"Source: Uploaded PDF - {original_pdf_filename}, Text length: {text_length} chars (approx.)" # Not directly used later, LLM provides it
+        # Generate title and summary
+        generated_data = await chain.ainvoke({"text_content": text_content, "format_instructions": parser.get_format_instructions()})
 
-        raw_llm_output_parsed = await chain.ainvoke({
-            "text_content": text_content,
-            "original_pdf_filename": original_pdf_filename, # For the prompt context
-            "format_instructions": parser.get_format_instructions()
-        })
+        title = generated_data.get("title", "Untitled Chapter")
+        summary = generated_data.get("summary", "")
 
-        actual_chapter_payload = raw_llm_output_parsed
-        # Check if the output is a dictionary with a single "chapter" key (common nesting issue)
-        if isinstance(raw_llm_output_parsed, dict) and "chapter" in raw_llm_output_parsed and len(raw_llm_output_parsed) == 1:
-            print("[TASK DEBUG] Detected 'chapter' nesting in LLM output. Unwrapping.")
-            actual_chapter_payload = raw_llm_output_parsed["chapter"]
-        
-        # Ensure we have a Pydantic model instance for LLMGeneratedChapter
-        # The JsonOutputParser in the chain should ideally return an instance of LLMGeneratedChapter
-        # if the JSON directly matches the model. If it returned a dict (e.g. after parsing a string
-        # that wasn't auto-coerced by the parser, or if we unwrapped), we parse it here.
-        if isinstance(actual_chapter_payload, dict):
-            try:
-                generated_chapter_data = LLMGeneratedChapter.parse_obj(actual_chapter_payload) # Pydantic v1 uses parse_obj
-            except ValidationError as ve:
-                print(f"[TASK ERROR] Pydantic validation failed for LLMGeneratedChapter: {ve}")
-                print(f"[TASK DEBUG] Payload causing validation error: {actual_chapter_payload}")
-                return None
-        elif isinstance(actual_chapter_payload, LLMGeneratedChapter):
-            generated_chapter_data = actual_chapter_payload
-        else:
-            print(f"[TASK ERROR] Unexpected type for chapter data after LLM chain: {type(actual_chapter_payload)}. Expected LLMGeneratedChapter or dict.")
-            print(f"[TASK DEBUG] Unexpected payload: {actual_chapter_payload}")
-            return None
+        # For now, we'll create a simple DocumentContent structure.
+        # The `documentContent` will just be a single paragraph block with the original text.
+        # The `aiNotes` will contain the generated summary.
+        # `quiz` and other complex parts are omitted for stability, as per the user request.
 
-        # Map LLM output to application's models.DocumentContent
-        # generated_chapter_data is now expected to be a valid LLMGeneratedChapter instance
+        document_blocks = [
+            models.DocumentContentBlock(type="paragraph", text=text_content)
+        ]
 
-        app_doc_content_blocks = []
-        # LLMGeneratedChapter.document_content_blocks is required, so generated_chapter_data.document_content_blocks should exist.
-        for block in generated_chapter_data.document_content_blocks: # block is LLMDocumentContentBlock
-            app_block_data = {'type': block.block_type} # Changed from block.type
-            if block.text is not None:
-                app_block_data['text'] = block.text
-            if block.block_type == 'heading' and block.level is not None: # Changed from block.type
-                app_block_data['level'] = block.level
-            app_doc_content_blocks.append(app_block_data)
-        
-        # ai_notes_from_llm is an LLMAINotes instance, also required in LLMGeneratedChapter
-        ai_notes_from_llm = generated_chapter_data.ai_notes
-        
-        app_key_concepts = []
-        if ai_notes_from_llm.key_concepts: # key_concepts is required in LLMAINotes
-            for kc in ai_notes_from_llm.key_concepts: # kc is LLMKeyConcept
-                app_key_concepts.append(models.KeyConcept(term=kc.term, definition=kc.definition))
-
-        app_important_terms = []
-        if ai_notes_from_llm.important_terms: # important_terms is required in LLMAINotes
-            for it in ai_notes_from_llm.important_terms: # it is LLMImportantTerm
-                app_important_terms.append(models.ImportantTerm(term=it.term, definition=it.definition))
-
-        app_outline = []
-        if ai_notes_from_llm.outline: # outline is required in LLMAINotes
-            app_outline = [_convert_llm_outline_to_model_outline(item) for item in ai_notes_from_llm.outline] # item is LLMOutlineItem
-
-        app_ai_notes = models.AINotes(
-            summary=ai_notes_from_llm.summary, # summary is required in LLMAINotes
-            keyConcepts=app_key_concepts,
-            importantTerms=app_important_terms,
-            outline=app_outline
+        ai_notes = models.AINotes(
+            summary=summary,
+            keyConcepts=[], # To be implemented later if needed
+            importantTerms=[], # To be implemented later if needed
+            outline=[] # To be implemented later if needed
         )
-
-        app_quiz = []
-        # quiz is required in LLMGeneratedChapter
-        for q_llm in generated_chapter_data.quiz: # q_llm is new LLMQuizQuestion
-            # Assuming models.QuizQuestion can handle these fields (might need adjustment in models.py)
-            app_quiz.append(models.QuizQuestion(
-                question=q_llm.question,
-                type=q_llm.type, # Pass the question type
-                options=q_llm.options if q_llm.options is not None else [], # Default to empty list if MC options are None
-                answer=q_llm.answer, # Pass the short answer text
-                answerIndex=q_llm.answer_index, # Pass MC answer index
-                explanation=q_llm.explanation
-            ))
         
-        # generated_chapter_data.metadata is now an LLMMetadata object.
-        # The fields source_pdf and text_length_characters within LLMMetadata are required.
-        llm_meta = generated_chapter_data.metadata
-        final_metadata = f"Source: {llm_meta.source_pdf}, Text length: {llm_meta.text_length_characters} chars"
+        metadata = f"Source: {original_pdf_filename}, Text length: {len(text_content)} chars"
 
-        return models.DocumentContent(
-            title=generated_chapter_data.title, # title is required in LLMGeneratedChapter
-            metadata=final_metadata,
-            documentContent=app_doc_content_blocks,
-            aiNotes=app_ai_notes,
-            quiz=app_quiz
+        # Construct the final DocumentContent object
+        # Ensure all required fields for DocumentContent are present.
+        document_content = models.DocumentContent(
+            title=title,
+            metadata=metadata,
+            documentContent=document_blocks,
+            aiNotes=ai_notes,
+            quiz=[] # Quiz is required, so provide an empty list.
         )
+        
+        print(f"[CONTENT GEN] Successfully generated content for chapter: '{title}'")
+        return document_content
 
     except Exception as e:
-        print(f"Error generating full chapter with LLM: {e}")
-        # import traceback
-        # traceback.print_exc()
+        print(f"[CONTENT GEN] Error generating chapter content with LLM: {e}")
         return None
 
 async def classify_pdf_text(text_content: str, existing_classes: List[str]) -> Optional[str]:
