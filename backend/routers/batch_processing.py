@@ -6,7 +6,6 @@ from .. import crud
 from ..graph_processor import run_graph
 
 router = APIRouter(
-    prefix="/api/batch-process-pdfs",
     tags=["batch_processing"],
 )
 
