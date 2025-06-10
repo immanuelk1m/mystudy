@@ -1,0 +1,217 @@
+{
+  "title": "Utility, Marginal Utility, and Consumer Optimization",
+  "metadata": "Source: 6f3e1225-fd5f-4ee1-802d-d7d6072b642f_7b3fba7b-3996-4824-b90c-28c4d49c9895_3 Consumer problem and demand curve.pdf, Text length: 2187 chars",
+  "documentContent": [
+    {
+      "type": "heading",
+      "content": "2. Utility: Basic Concepts",
+      "level": 2
+    },
+    {
+      "type": "paragraph",
+      "content": "People desire goods and services for the satisfaction or utility derived from their use. Utility is the term economists use to describe a person’s level of satisfaction, usefulness, or happiness with their choices. While not directly measurable in daily life, utility serves as a crucial instrument in economic models to replicate the underlying incentive structure of individuals.",
+      "level": null
+    },
+    {
+      "type": "heading",
+      "content": "Assumptions Regarding Utility",
+      "level": 3
+    },
+    {
+      "type": "paragraph",
+      "content": "Economists generally assume two key features of utility:",
+      "level": null
+    },
+    {
+      "type": "paragraph",
+      "content": "1. The more of a good one consumes, the more utility one obtains.",
+      "level": null
+    },
+    {
+      "type": "paragraph",
+      "content": "2. As a person consumes more of a good, the additional (or marginal) utility from each additional unit of the good declines.",
+      "level": null
+    },
+    {
+      "type": "heading",
+      "content": "The Law of Diminishing Marginal Utility",
+      "level": 3
+    },
+    {
+      "type": "paragraph",
+      "content": "It is a general pattern that consumption of the first few units of a good tends to bring a higher level of utility than consumption of later units. For instance, the first few drops of water when thirsty provide more relief than subsequent sips. Economists refer to this pattern as the law of diminishing marginal utility. This law implies that the utility a person receives from consuming the first unit of a good is typically more than the utility received from consuming the fifth or the tenth unit of that same good.",
+      "level": null
+    },
+    {
+      "type": "heading",
+      "content": "Implications of Diminishing Marginal Utility",
+      "level": 3
+    },
+    {
+      "type": "paragraph",
+      "content": "The law of diminishing marginal utility explains why people and societies rarely make all-or-nothing choices. For example, most people would not exclusively eat their favorite food, like potatoes, even if they initially derive high utility from it, because the marginal utility from later servings would not be very high.",
+      "level": null
+    },
+    {
+      "type": "heading",
+      "content": "Marginal Analysis and Consumer Optimization",
+      "level": 2
+    },
+    {
+      "type": "paragraph",
+      "content": "Marginal analysis involves examining the tradeoffs of consuming less of one good and more of another, measured in terms of marginal utility per spending. Marginal utility of X is defined as the additional utility from consuming one more unit of X (the smallest imaginable unit).",
+      "level": null
+    },
+    {
+      "type": "heading",
+      "content": "Considering Prices: Marginal Utility Per Spending",
+      "level": 3
+    },
+    {
+      "type": "paragraph",
+      "content": "When making decisions, it's crucial to consider that prices for different goods vary. Relative price indicates how many units of Y can be exchanged for one more unit of X. To compare choices effectively, we use 'marginal utility per spending,' which is calculated as the marginal utility of a good divided by its price (Marginal utility of X / price of X).",
+      "level": null
+    },
+    {
+      "type": "heading",
+      "content": "The Rule of Consumer Maximization",
+      "level": 3
+    },
+    {
+      "type": "paragraph",
+      "content": "The intuition for the rule of maximization is based on comparing the marginal utilities per spending. Suppose a consumer is at an initial state with goods X and Y. If the marginal utility per spending for X is greater than for Y (𝑀𝑈𝑋/𝑃𝑋 > 𝑀𝑈𝑌/𝑃𝑌), the consumer can improve their situation by consuming more X and less Y. Conversely, if 𝑀𝑈𝑋/𝑃𝑋 < 𝑀𝑈𝑌/𝑃𝑌, they can benefit from consuming more Y and less X. As a consumer consumes more of a good, its marginal utility decreases, eventually leading to a point where the marginal utility per spending for both goods becomes equal.",
+      "level": null
+    },
+    {
+      "type": "paragraph",
+      "content": "After all adjustments, the rule of maximization states that optimal choice occurs when:",
+      "level": null
+    },
+    {
+      "type": "paragraph",
+      "content": "𝑴𝑼𝑿 / 𝑷𝑿 = 𝑴𝑼𝒀 / 𝑷𝒀",
+      "level": null
+    },
+    {
+      "type": "paragraph",
+      "content": "There is no incentive to deviate from this equality condition, as any deviation would mean a consumer could achieve higher total utility by reallocating spending.",
+      "level": null
+    },
+    {
+      "type": "paragraph",
+      "content": "In a more general scenario with multiple goods, the rule extends to:",
+      "level": null
+    },
+    {
+      "type": "paragraph",
+      "content": "𝑴𝑼𝑿 / 𝑷𝑿 = 𝑴𝑼𝒀 / 𝑷𝒀 = ⋯ = 𝑴𝑼𝒁 / 𝑷𝒁",
+      "level": null
+    },
+    {
+      "type": "paragraph",
+      "content": "This rule captures several important characteristics of consumers in a market economy, including the relationship among consumptions on different items, the effect of price changes, and the effect of income changes, as well as how the shape of marginal utilities affects consumption plans.",
+      "level": null
+    },
+    {
+      "type": "heading",
+      "content": "Example: Pepe’s Optimal Choice",
+      "level": 2
+    },
+    {
+      "type": "paragraph",
+      "content": "Consider Pepe, with a budget constraint of 5600 = 700M + 1400S, where M represents meal tickets and S represents clothes. His utility functions are given as 𝑀𝑈𝑀 = 1/𝑀 and 𝑀𝑈𝑆 = 1/𝑆. The goal is to determine the optimal choice for M and S that maximizes Pepe's utility given his budget.",
+      "level": null
+    },
+    {
+      "type": "paragraph",
+      "content": "If Pepe's income increases to 11,200 won, his optimal consumption plan for meal tickets and clothes would change, reflecting the expanded budget. This demonstrates how income changes affect consumption plans, which can be visualized by shifting the budget constraint and finding a new optimal point.",
+      "level": null
+    }
+  ],
+  "aiNotes": {
+    "summary": "This document introduces the economic concept of utility, defining it as the satisfaction or happiness derived from consuming goods and services. It explains the two key assumptions about utility: more consumption generally leads to more utility, but crucially, the additional utility from each subsequent unit of a good declines, a principle known as the Law of Diminishing Marginal Utility. This law helps explain why consumers diversify their choices rather than making 'all-or-nothing' decisions. The text then delves into marginal analysis, introducing 'marginal utility per spending' (marginal utility divided by price) as a tool for comparing different goods. It culminates in the 'Rule of Maximization' (or consumer optimization rule), stating that consumers achieve maximum utility when the marginal utility per dollar spent is equal across all goods. This rule is then extended to multiple goods and its implications for understanding consumer behavior in response to price and income changes are highlighted, followed by an illustrative example.",
+    "keyConcepts": [
+      {
+        "term": "Utility",
+        "definition": "The term economists use to describe a person’s level of satisfaction, usefulness, or happiness with his or her choices derived from consuming goods and services."
+      },
+      {
+        "term": "Marginal Utility",
+        "definition": "The additional satisfaction or utility gained from consuming one more unit of a good or service."
+      },
+      {
+        "term": "Law of Diminishing Marginal Utility",
+        "definition": "The principle that as a person consumes more of a good, the additional (marginal) utility from each additional unit of the good declines."
+      },
+      {
+        "term": "Marginal Utility Per Spending",
+        "definition": "The marginal utility of a good divided by its price, indicating the utility gained per dollar spent on that good, used for comparing the value of different goods."
+      },
+      {
+        "term": "Rule of Consumer Maximization (Equimarginal Principle)",
+        "definition": "The condition under which consumers maximize their total utility by allocating their budget such that the marginal utility per dollar spent is equal for all goods consumed (MUx/Px = MUy/Py = ...)."
+      }
+    ],
+    "importantTerms": [
+      {
+        "term": "Utility",
+        "definition": "A measure of the satisfaction, usefulness, or happiness a person derives from consuming goods and services."
+      },
+      {
+        "term": "Marginal Utility",
+        "definition": "The additional utility gained from consuming one more unit of a good."
+      },
+      {
+        "term": "Law of Diminishing Marginal Utility",
+        "definition": "The economic principle stating that as consumption of a good increases, the additional utility obtained from each additional unit of the good decreases."
+      },
+      {
+        "term": "Marginal Utility Per Spending",
+        "definition": "The ratio of a good's marginal utility to its price, indicating the utility gained per unit of currency spent on that good."
+      },
+      {
+        "term": "Rule of Maximization",
+        "definition": "The condition for consumer optimization where the marginal utility per dollar spent is equal across all goods consumed, leading to the highest possible total utility."
+      }
+    ],
+    "outline": [
+      {
+        "text": "Utility: Basic Concepts",
+        "id": "utility-basic-concepts",
+        "children": [
+          {
+            "text": "Assumptions Regarding Utility",
+            "id": "assumptions-regarding-utility"
+          },
+          {
+            "text": "The Law of Diminishing Marginal Utility",
+            "id": "the-law-of-diminishing-marginal-utility"
+          },
+          {
+            "text": "Implications of Diminishing Marginal Utility",
+            "id": "implications-of-diminishing-marginal-utility"
+          }
+        ]
+      },
+      {
+        "text": "Marginal Analysis and Consumer Optimization",
+        "id": "marginal-analysis-and-consumer-optimization",
+        "children": [
+          {
+            "text": "Considering Prices: Marginal Utility Per Spending",
+            "id": "considering-prices-marginal-utility-per-spending"
+          },
+          {
+            "text": "The Rule of Consumer Maximization",
+            "id": "the-rule-of-consumer-maximization"
+          }
+        ]
+      },
+      {
+        "text": "Example: Pepe’s Optimal Choice",
+        "id": "example-pepes-optimal-choice"
+      }
+    ]
+  },
+  "quiz": []
+}

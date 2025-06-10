@@ -1,0 +1,541 @@
+{
+  "title": "The Consumer Problem: Budget Constraints and Opportunity Cost",
+  "metadata": "Source: 6f3e1225-fd5f-4ee1-802d-d7d6072b642f_7b3fba7b-3996-4824-b90c-28c4d49c9895_3 Consumer problem and demand curve.pdf, Text length: 3724 chars",
+  "documentContent": [
+    {
+      "type": "heading",
+      "content": "Lecture 2: Consumer Problem",
+      "level": 1
+    },
+    {
+      "type": "paragraph",
+      "content": "Jengei Hong",
+      "level": null
+    },
+    {
+      "type": "paragraph",
+      "content": "The market economy system involves firms (Firm 1 to Firm 5) interacting with a Good & service market and a Production factor market. This illustrates the flow within an economy.",
+      "level": null
+    },
+    {
+      "type": "paragraph",
+      "content": "Consumption and the demand curve are central to understanding how individuals interact with the market. Firms supply goods and services to the market, which are then consumed.",
+      "level": null
+    },
+    {
+      "type": "heading",
+      "content": "How an Individual Consumer Makes Choices?",
+      "level": 2
+    },
+    {
+      "type": "paragraph",
+      "content": "Experiencing an economic modelling",
+      "level": null
+    },
+    {
+      "type": "paragraph",
+      "content": "Understanding the concept of budgets constraint and opportunity cost",
+      "level": null
+    },
+    {
+      "type": "paragraph",
+      "content": "Understanding the concepts of utility and marginal utility",
+      "level": null
+    },
+    {
+      "type": "paragraph",
+      "content": "Solving the consumer’s optimization problem with the marginal analysis",
+      "level": null
+    },
+    {
+      "type": "paragraph",
+      "content": "Learning the feature of optimal consumption decisions",
+      "level": null
+    },
+    {
+      "type": "paragraph",
+      "content": "Deriving a demand curve",
+      "level": null
+    },
+    {
+      "type": "heading",
+      "content": "Goals",
+      "level": 2
+    },
+    {
+      "type": "heading",
+      "content": "Introduction",
+      "level": 2
+    },
+    {
+      "type": "heading",
+      "content": "1. Model Description",
+      "level": 3
+    },
+    {
+      "type": "paragraph",
+      "content": "What they can choose? Budget constraint",
+      "level": null
+    },
+    {
+      "type": "paragraph",
+      "content": "What is their objective? Utility function",
+      "level": null
+    },
+    {
+      "type": "paragraph",
+      "content": "How do they behave? Maximization of the objective under the constraint (rationality)",
+      "level": null
+    },
+    {
+      "type": "heading",
+      "content": "2. Maximization of the Utility Subject to the Budget Constraint",
+      "level": 3
+    },
+    {
+      "type": "paragraph",
+      "content": "Marginal analysis",
+      "level": null
+    },
+    {
+      "type": "heading",
+      "content": "3. Derivation of a Demand Curve",
+      "level": 3
+    },
+    {
+      "type": "heading",
+      "content": "1. Budget Constraint",
+      "level": 2
+    },
+    {
+      "type": "paragraph",
+      "content": "Suppose there is a consumer whose name is Pepe. He is the representative agent of all customers in our society.",
+      "level": null
+    },
+    {
+      "type": "paragraph",
+      "content": "We want to capture that consumers have a limited amount of income to spend on the things they need and want.",
+      "level": null
+    },
+    {
+      "type": "paragraph",
+      "content": "Pepe has 5,600 wons in spending money each week.",
+      "level": null
+    },
+    {
+      "type": "paragraph",
+      "content": "He can allocate this spending between meal tickets and shirts.",
+      "level": null
+    },
+    {
+      "type": "paragraph",
+      "content": "The meal tickets cost 700 wons each, and the shirts are 1,400 wons each.",
+      "level": null
+    },
+    {
+      "type": "paragraph",
+      "content": "Of course, the budget constraint diagram containing just two goods is not realistic.",
+      "level": null
+    },
+    {
+      "type": "paragraph",
+      "content": "Because, in a modern economy, people choose from thousands of goods.",
+      "level": null
+    },
+    {
+      "type": "paragraph",
+      "content": "However, thinking about a model with many goods can be just a straightforward extension of what we discussed here.",
+      "level": null
+    },
+    {
+      "type": "paragraph",
+      "content": "The point is that there is always a trade-off problem in decisions.",
+      "level": null
+    },
+    {
+      "type": "paragraph",
+      "content": "Each point on the line of budget constraint represents a combination of meal tickets and shirts, which the total cost adds up to Pepe’s budget of 5,600 won. If he spends his budget, his budget constraint is the outer line of the colored area. Any point outside the constraint is not affordable, because it would cost more money than Pepe has in his budget. If he had unlimited income or goods were free, then he could consume without limit.",
+      "level": null
+    },
+    {
+      "type": "paragraph",
+      "content": "It just means that, Income = Expenditure.",
+      "level": null
+    },
+    {
+      "type": "paragraph",
+      "content": "In this case, Income = 5,600 wons",
+      "level": null
+    },
+    {
+      "type": "paragraph",
+      "content": "Expenditure = 700 M + 1,400 S",
+      "level": null
+    },
+    {
+      "type": "paragraph",
+      "content": "So, 5600 = 700M + 1400S",
+      "level": null
+    },
+    {
+      "type": "paragraph",
+      "content": "To draw it in a 2-D plane:",
+      "level": null
+    },
+    {
+      "type": "paragraph",
+      "content": "5600 = 700M + 1400S",
+      "level": null
+    },
+    {
+      "type": "paragraph",
+      "content": "700M = 5600 – 1400S",
+      "level": null
+    },
+    {
+      "type": "paragraph",
+      "content": "M = 8 – 2S",
+      "level": null
+    },
+    {
+      "type": "paragraph",
+      "content": "The slope of the budget constraint is determined by the relative price.",
+      "level": null
+    },
+    {
+      "type": "paragraph",
+      "content": "Relative price - How many meal tickets would Pepe have to give up to get one more shirt, while staying within his budget?",
+      "level": null
+    },
+    {
+      "type": "paragraph",
+      "content": "All along the budget set, getting 1 shirt means giving up 2 meal tickets.",
+      "level": null
+    },
+    {
+      "type": "paragraph",
+      "content": "Economists call it opportunity cost.",
+      "level": null
+    },
+    {
+      "type": "paragraph",
+      "content": "Opportunity cost indicates what has to be given up to obtain something. In other words, opportunity cost is the value of the next best alternative.",
+      "level": null
+    },
+    {
+      "type": "paragraph",
+      "content": "For Pepe, the opportunity cost of 1 shirt is the 2 meal tickets.",
+      "level": null
+    },
+    {
+      "type": "paragraph",
+      "content": "He would decide to buy one more shirt, if the value of the extra shirt exceeds the value of the alternative (2 meal tickets).",
+      "level": null
+    },
+    {
+      "type": "paragraph",
+      "content": "A fundamental principle of economics is that every choice has an opportunity cost.",
+      "level": null
+    },
+    {
+      "type": "paragraph",
+      "content": "If you sleep through your economics class, the opportunity cost might be the time which would be spent to make up the class.",
+      "level": null
+    },
+    {
+      "type": "paragraph",
+      "content": "If you choose to marry one person, you give up the opportunity to marry anyone else.",
+      "level": null
+    },
+    {
+      "type": "paragraph",
+      "content": "In short, opportunity cost is all around us and part of human existence.",
+      "level": null
+    },
+    {
+      "type": "paragraph",
+      "content": "In many cases, it is reasonable to refer to the opportunity cost as the price.",
+      "level": null
+    },
+    {
+      "type": "paragraph",
+      "content": "For example, attending graduate school is the case where the opportunity cost exceeds the monetary cost.",
+      "level": null
+    },
+    {
+      "type": "paragraph",
+      "content": "The explicit costs of attending college might be about tuition, books, room and board, and other expenses.",
+      "level": null
+    },
+    {
+      "type": "paragraph",
+      "content": "But in addition, during the hours that you are attending class and studying, it is impossible to work at a paying job.",
+      "level": null
+    },
+    {
+      "type": "paragraph",
+      "content": "Thus, graduate school imposes both an out-of-pocket cost and an opportunity cost of lost earnings.",
+      "level": null
+    },
+    {
+      "type": "paragraph",
+      "content": "What if the price of a good changes?",
+      "level": null
+    },
+    {
+      "type": "paragraph",
+      "content": "Suppose that, the price of bus ticket increased to 1,400 won.",
+      "level": null
+    },
+    {
+      "type": "paragraph",
+      "content": "A price increase for bus tickets would have no effect on the ability to purchase Ramen.",
+      "level": null
+    },
+    {
+      "type": "paragraph",
+      "content": "But it would reduce the number of bus tickets which Pepe could afford to buy.",
+      "level": null
+    },
+    {
+      "type": "paragraph",
+      "content": "What happens in the budget constraint? Redraw it.",
+      "level": null
+    },
+    {
+      "type": "paragraph",
+      "content": "Meal ticket = 4 - Shirt (This equation represents the new budget constraint if the price of one good changes, assuming the other variables are adjusted accordingly for the example given).",
+      "level": null
+    },
+    {
+      "type": "paragraph",
+      "content": "What if Pepe’s income changes?",
+      "level": null
+    },
+    {
+      "type": "paragraph",
+      "content": "Suppose that, his income drops as a half (=2,800 won).",
+      "level": null
+    },
+    {
+      "type": "paragraph",
+      "content": "In this case, it would reduce the number of both of meal tickets and shirts which Pepe could afford to buy.",
+      "level": null
+    },
+    {
+      "type": "paragraph",
+      "content": "What if Pepe’s income is expanded?",
+      "level": null
+    }
+  ],
+  "aiNotes": {
+    "summary": "This text introduces the concept of the 'consumer problem' in economics, focusing on budget constraints and opportunity cost. It uses a simplified model with a representative consumer, Pepe, to illustrate how limited income and prices of goods (meal tickets and shirts) define what a consumer can afford. The budget constraint line shows the combinations of goods that can be purchased, with its slope representing the relative price and opportunity cost. The document explains how changes in prices or income affect the budget constraint, leading to shifts or changes in slope, and emphasizes that every economic choice involves an opportunity cost.",
+    "keyConcepts": [
+      {
+        "term": "Budget Constraint",
+        "definition": "The limit on the consumption bundles that a consumer can afford, determined by income and prices of goods."
+      },
+      {
+        "term": "Opportunity Cost",
+        "definition": "The value of the next best alternative that must be foregone when a choice is made."
+      },
+      {
+        "term": "Relative Price",
+        "definition": "The price of one good in terms of another, which determines the slope of the budget constraint."
+      },
+      {
+        "term": "Consumer Optimization Problem",
+        "definition": "The economic problem faced by consumers to maximize their utility subject to their budget constraint."
+      },
+      {
+        "term": "Marginal Analysis",
+        "definition": "A method of analyzing economic decisions by considering the additional benefit versus the additional cost of one more unit."
+      }
+    ],
+    "importantTerms": [
+      {
+        "term": "Budget Constraint",
+        "definition": "A line representing the maximum combinations of two goods a consumer can afford given their income and the prices of the goods."
+      },
+      {
+        "term": "Opportunity Cost",
+        "definition": "The value of the next best alternative that must be given up to obtain something else."
+      },
+      {
+        "term": "Relative Price",
+        "definition": "The price of one good in terms of another good, reflected by the slope of the budget constraint."
+      },
+      {
+        "term": "Income",
+        "definition": "The total amount of money available to a consumer for spending on goods and services."
+      },
+      {
+        "term": "Expenditure",
+        "definition": "The total amount of money spent on goods and services, which equals income when the budget is fully utilized."
+      },
+      {
+        "term": "Rationality",
+        "definition": "The assumption in economics that consumers behave in a way that maximizes their objective (utility) given their constraints."
+      },
+      {
+        "term": "Utility Function",
+        "definition": "A mathematical representation of the satisfaction or happiness a consumer derives from consuming goods and services."
+      }
+    ],
+    "outline": [
+      {
+        "text": "Lecture 2: Consumer Problem",
+        "id": "lecture-2-consumer-problem",
+        "children": [
+          {
+            "text": "Jengei Hong",
+            "id": "jengei-hong"
+          },
+          {
+            "text": "Market Economy System Overview",
+            "id": "market-economy-system-overview"
+          },
+          {
+            "text": "Consumption and Demand Curve",
+            "id": "consumption-and-demand-curve"
+          }
+        ]
+      },
+      {
+        "text": "How an Individual Consumer Makes Choices?",
+        "id": "how-an-individual-consumer-makes-choices",
+        "children": [
+          {
+            "text": "Economic Modelling Experience",
+            "id": "economic-modelling-experience"
+          },
+          {
+            "text": "Understanding Budget Constraints and Opportunity Cost",
+            "id": "understanding-budget-constraints-and-opportunity-cost"
+          },
+          {
+            "text": "Understanding Utility and Marginal Utility",
+            "id": "understanding-utility-and-marginal-utility"
+          },
+          {
+            "text": "Solving Consumer Optimization Problem with Marginal Analysis",
+            "id": "solving-consumer-optimization-problem-with-marginal-analysis"
+          },
+          {
+            "text": "Learning Optimal Consumption Decisions",
+            "id": "learning-optimal-consumption-decisions"
+          },
+          {
+            "text": "Deriving a Demand Curve",
+            "id": "deriving-a-demand-curve"
+          }
+        ]
+      },
+      {
+        "text": "Goals",
+        "id": "goals"
+      },
+      {
+        "text": "Introduction",
+        "id": "introduction",
+        "children": [
+          {
+            "text": "1. Model Description",
+            "id": "model-description",
+            "children": [
+              {
+                "text": "Consumer Choices: Budget Constraint",
+                "id": "consumer-choices-budget-constraint"
+              },
+              {
+                "text": "Consumer Objective: Utility Function",
+                "id": "consumer-objective-utility-function"
+              },
+              {
+                "text": "Consumer Behavior: Maximization under Constraint (Rationality)",
+                "id": "consumer-behavior-maximization-under-constraint-rationality"
+              }
+            ]
+          },
+          {
+            "text": "2. Maximization of Utility Subject to Budget Constraint",
+            "id": "maximization-of-utility-subject-to-budget-constraint",
+            "children": [
+              {
+                "text": "Marginal Analysis",
+                "id": "marginal-analysis"
+              }
+            ]
+          },
+          {
+            "text": "3. Derivation of a Demand Curve",
+            "id": "derivation-of-a-demand-curve"
+          }
+        ]
+      },
+      {
+        "text": "1. Budget Constraint",
+        "id": "budget-constraint",
+        "children": [
+          {
+            "text": "Introducing Pepe, the Representative Agent",
+            "id": "introducing-pepe-representative-agent"
+          },
+          {
+            "text": "Limited Income and Spending Allocation",
+            "id": "limited-income-and-spending-allocation"
+          },
+          {
+            "text": "Simplification to Two Goods",
+            "id": "simplification-to-two-goods"
+          },
+          {
+            "text": "Trade-off Problem in Decisions",
+            "id": "trade-off-problem-in-decisions"
+          },
+          {
+            "text": "Interpreting the Budget Constraint Line",
+            "id": "interpreting-the-budget-constraint-line"
+          },
+          {
+            "text": "Affordable vs. Unaffordable Consumption",
+            "id": "affordable-vs-unaffordable-consumption"
+          },
+          {
+            "text": "Income and Expenditure Equation",
+            "id": "income-and-expenditure-equation"
+          },
+          {
+            "text": "Deriving the Budget Constraint Equation (M = 8 - 2S)",
+            "id": "deriving-the-budget-constraint-equation"
+          },
+          {
+            "text": "Slope of the Budget Constraint and Relative Price",
+            "id": "slope-of-the-budget-constraint-and-relative-price"
+          },
+          {
+            "text": "Understanding Opportunity Cost",
+            "id": "understanding-opportunity-cost"
+          },
+          {
+            "text": "Opportunity Cost Examples",
+            "id": "opportunity-cost-examples"
+          },
+          {
+            "text": "Opportunity Cost vs. Monetary Cost (Graduate School Example)",
+            "id": "opportunity-cost-vs-monetary-cost-graduate-school-example"
+          },
+          {
+            "text": "Effect of Price Changes on Budget Constraint",
+            "id": "effect-of-price-changes-on-budget-constraint"
+          },
+          {
+            "text": "Effect of Income Changes on Budget Constraint",
+            "id": "effect-of-income-changes-on-budget-constraint"
+          }
+        ]
+      }
+    ]
+  },
+  "quiz": []
+}
