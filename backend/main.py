@@ -1,56 +1,112 @@
-from fastapi import FastAPI
+import json
+import re
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles # Added for static files
-import os # Added for path joining
+from pathlib import Path
+import os
 
-from .routers import notebooks # Use relative import for routers sub-package
-from .routers import batch_processing # Add import for the new batch processing router
+def read_json_file(file_path):
+    with open(file_path, "r", encoding="utf-8") as f:
+        return json.load(f)
 
-app = FastAPI(
-    title="Study Platform API",
-    description="API for the study platform, providing data for notebooks, chapters, content, and structure.",
-    version="0.1.0",
-)
+app = FastAPI()
 
-# Configure CORS
-# Adjust origins as necessary for your frontend development server
-origins = [
-    "http://localhost",         # Common default for local dev
-    "http://localhost:3000",    # Default for create-react-app
-    "http://localhost:5173",    # Default for Vite
-    "http://localhost:8080",    # Current frontend dev server port
-    # Add other origins if your frontend runs on a different port
-]
-
+# CORS 설정
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,       # Allows specific origins
+    allow_origins=["*"],
     allow_credentials=True,
-    allow_methods=["*"],         # Allows all methods (GET, POST, etc.)
-    allow_headers=["*"],         # Allows all headers
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
-# Mount static files directory for uploads
-# This will serve files from backend/static under the /static URL path
-static_dir = os.path.join(os.path.dirname(__file__), "static")
-# Ensure the 'static' directory and 'static/uploads' subdirectory exist
-if not os.path.exists(static_dir):
-    os.makedirs(static_dir)
-if not os.path.exists(os.path.join(static_dir, "uploads")):
-    os.makedirs(os.path.join(static_dir, "uploads")) # We created this with run_command, but good to have for robustness
+BASE_DIR = Path(__file__).resolve().parent
+DATA_DIR = BASE_DIR / "data"
 
-app.mount("/static", StaticFiles(directory=static_dir), name="static")
+@app.get("/api/notebooks")
+def get_notebooks():
+    """
+    notebooks.json 파일의 내용을 반환합니다.
+    """
+    try:
+        notebooks_file = DATA_DIR / "notebooks.json"
+        with open(notebooks_file, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Notebooks not found")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
-# Include routers
-app.include_router(notebooks.router)
-app.include_router(batch_processing.router) # Include the new batch processing router
+@app.get("/api/notebooks/{notebook_id}")
+async def get_notebook(notebook_id: str):
+    """특정 ID를 가진 노트북의 상세 정보를 반환합니다."""
+    try:
+        notebooks = read_json_file(os.path.join(DATA_DIR, "notebooks.json"))
+        
+        # notebook_id를 문자열로 직접 비교하여 타입 불일치 문제를 해결합니다.
+        for notebook in notebooks:
+            if notebook.get("id") == notebook_id:
+                return notebook
+        
+        # 일치하는 노트북이 없을 경우 404 에러를 발생시킵니다.
+        raise HTTPException(status_code=404, detail=f"Notebook with id {notebook_id} not found")
+    except HTTPException as e:
+        # 이미 처리된 HTTP 예외는 그대로 다시 발생시킵니다.
+        raise e
+    except Exception as e:
+        # 그 외의 모든 예외는 500 에러로 처리합니다.
+        raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
 
-@app.get("/", tags=["Root"])
-async def read_root():
-    return {"message": "Welcome to the Study Platform API! Visit /docs for API documentation."}
+@app.get("/api/notebooks/{notebook_id}/chapters")
+async def get_chapters(notebook_id: str):
+    """특정 노트북의 챕터 목록을 반환합니다."""
+    try:
+        data = read_json_file(os.path.join(DATA_DIR, "chapters", f"{notebook_id}.json"))
+        
+        # --- START: CRITICAL FIX ---
+        # 실제 파일 구조에 맞게 "chapters" 키에서 배열을 가져옵니다.
+        chapter_titles = data.get("chapters", [])
+        if not isinstance(chapter_titles, list):
+             raise HTTPException(status_code=500, detail="Invalid chapter data format: 'chapters' is not a list.")
+        # --- END: CRITICAL FIX ---
 
-# To run the server (for development):
-# uvicorn backend.main:app --reload --port 8000
-# (Assuming 'backend' is the directory containing main.py and it's in PYTHONPATH or you run from parent dir)
-# Or, if you are in the 'backend' directory:
-# uvicorn main:app --reload --port 8000
+        corrected_chapters = []
+        for title in chapter_titles:
+            match = re.match(r"^\s*(\d+)", title)
+            if match:
+                chapter_id = int(match.group(1))
+                corrected_chapters.append({"id": chapter_id, "title": title.strip()})
+        
+        return corrected_chapters
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"An unexpected error occurred in get_chapters: {str(e)}")
+
+@app.get("/api/notebooks/{notebook_id}/content/{chapter_id}")
+def get_content(notebook_id: int, chapter_id: int):
+    """
+    특정 챕터의 컨텐츠를 반환합니다.
+    """
+    try:
+        content_file = DATA_DIR / "content" / str(notebook_id) / f"{chapter_id}.json"
+        with open(content_file, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail=f"Content for notebook {notebook_id}, chapter {chapter_id} not found")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/notebooks/{notebook_id}/structure/{chapter_id}")
+def get_structure(notebook_id: int, chapter_id: int):
+    """
+    특정 챕터의 구조를 반환합니다.
+    """
+    try:
+        structure_file = DATA_DIR / "structure" / str(notebook_id) / f"{chapter_id}.json"
+        with open(structure_file, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail=f"Structure for notebook {notebook_id}, chapter {chapter_id} not found")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
