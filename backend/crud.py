@@ -191,67 +191,65 @@ def move_temp_pdf_to_notebook_storage(temp_pdf_path: str, notebook_id: str, orig
         # Consider if temp_pdf_path should be cleaned up by the caller in case of failure here.
         return None
 
-def _get_next_chapter_number_and_path_params(notebook_id: str) -> Tuple[str, str, str, str, str]:
-    """Determines the next chapter number and paths for a given notebook."""
+def _get_next_chapter_number_and_path_params(notebook_id: str) -> Tuple[str, str, str, str, Dict[str, Any]]:
+    """
+    Determines the next chapter number, creates necessary paths, and returns them
+    along with the current chapter data. This makes it easier to manage state
+    in the calling function without re-reading files.
+    """
     chapters_file_path = os.path.join(DATA_DIR, 'chapters', f'{notebook_id}.json')
     chapters_data = load_json(chapters_file_path)
     
-    next_chapter_num = 1
-    if chapters_data and 'chapters' in chapters_data:
-        next_chapter_num = len(chapters_data['chapters']) + 1
+    # Initialize if file doesn't exist or is empty/malformed
+    if not chapters_data or 'chapters' not in chapters_data:
+        chapters_data = {'chapters': []}
+    
+    next_chapter_num = len(chapters_data['chapters']) + 1
     str_next_chapter_num = str(next_chapter_num)
     
-    # Define paths for the new chapter's content, structure
-    # Ensure subdirectories for content/structure per notebook_id exist
-    os.makedirs(os.path.join(DATA_DIR, 'content', notebook_id), exist_ok=True)
-    os.makedirs(os.path.join(DATA_DIR, 'structure', notebook_id), exist_ok=True)
+    # Define paths and ensure directories exist
+    content_dir = os.path.join(DATA_DIR, 'content', notebook_id)
+    structure_dir = os.path.join(DATA_DIR, 'structure', notebook_id)
+    os.makedirs(content_dir, exist_ok=True)
+    os.makedirs(structure_dir, exist_ok=True)
 
-    new_content_path = os.path.join(DATA_DIR, 'content', notebook_id, f'{str_next_chapter_num}.json')
-    new_structure_path = os.path.join(DATA_DIR, 'structure', notebook_id, f'{str_next_chapter_num}.json')
+    new_content_path = os.path.join(content_dir, f'{str_next_chapter_num}.json')
+    new_structure_path = os.path.join(structure_dir, f'{str_next_chapter_num}.json')
     
-    return str_next_chapter_num, chapters_file_path, new_content_path, new_structure_path
+    return str_next_chapter_num, chapters_file_path, new_content_path, new_structure_path, chapters_data
 
 def create_new_chapter_from_data(
-    notebook_id: str, 
-    generated_content: models.DocumentContent, 
-    pdf_web_path: str, 
+    notebook_id: str,
+    generated_content: models.DocumentContent,
+    pdf_web_path: str,
     original_pdf_filename: str
 ) -> Optional[str]:
     """Creates all necessary files and updates for a new chapter based on AI generation and PDF upload."""
     
-    str_next_chapter_num, chapters_file_path, new_content_path, new_structure_path = _get_next_chapter_number_and_path_params(notebook_id)
+    str_next_chapter_num, chapters_file_path, new_content_path, new_structure_path, chapters_data = _get_next_chapter_number_and_path_params(notebook_id)
 
-    # 1. Save the new DocumentContent (AI-generated)
-    # Pydantic model to dict, ensuring datetime is handled if it were present (though not in DocumentContent directly)
+    # 1. Save the new DocumentContent
     if not _save_json(new_content_path, generated_content.dict(exclude_none=True)):
         print(f"Failed to save new chapter content for notebook {notebook_id}, chapter {str_next_chapter_num}")
         return None
         
-    # 2. Update the main chapter list for the notebook
-    chapters_data = load_json(chapters_file_path)
-    if not chapters_data or 'chapters' not in chapters_data:
-        chapters_data = {'chapters': []} # Initialize if not exists or malformed
-    
-    # Use the title from the AI-generated content
+    # 2. Update the main chapter list
     new_chapter_title = generated_content.title if generated_content.title else f"Chapter {str_next_chapter_num} - {original_pdf_filename}"
     chapters_data['chapters'].append(new_chapter_title)
     if not _save_json(chapters_file_path, chapters_data):
         print(f"Failed to update chapter list for notebook {notebook_id}")
-        # Consider rollback or error handling for partial creation
         return None
         
-    # 3. Create the new structure file for the chapter, linking to the PDF
+    # 3. Create the new structure file
     structure_content = [
         {
             "name": original_pdf_filename,
             "type": "file",
             "path": pdf_web_path
         }
-        # Add more structure items if needed, e.g., if LLM generates folder structures
     ]
     if not _save_json(new_structure_path, structure_content):
         print(f"Failed to save new chapter structure for notebook {notebook_id}, chapter {str_next_chapter_num}")
-        # Consider rollback
         return None
         
     return str_next_chapter_num
@@ -264,13 +262,6 @@ def create_notebook_and_chapters_from_processing(
     """
     Creates a notebook (or gets an existing one) and then creates all chapters
     from a list of generated DocumentContent objects.
-
-    Args:
-        notebook_title: The title for the notebook.
-        generated_contents: A list of DocumentContent models, each representing a chapter.
-
-    Returns:
-        The notebook ID if successful, otherwise None.
     """
     try:
         # 1. Get or create the notebook
@@ -283,19 +274,17 @@ def create_notebook_and_chapters_from_processing(
 
         # 2. Iterate through generated contents and create a chapter for each
         for content_item in generated_contents:
-            # This logic is adapted from create_new_chapter_from_data
-            str_next_chapter_num, chapters_file_path, new_content_path, new_structure_path = _get_next_chapter_number_and_path_params(notebook_id)
+            # By calling this inside the loop, we re-evaluate the next chapter number
+            # based on the *current* state of the chapters file, ensuring correctness
+            # even if a previous iteration failed.
+            str_next_chapter_num, chapters_file_path, new_content_path, new_structure_path, chapters_data = _get_next_chapter_number_and_path_params(notebook_id)
 
             # 2a. Save the new DocumentContent
             if not _save_json(new_content_path, content_item.dict(exclude_none=True)):
                 print(f"Failed to save content for chapter {str_next_chapter_num} in notebook {notebook_id}")
-                continue # Or handle error more robustly
+                continue
 
             # 2b. Update the main chapter list
-            chapters_data = load_json(chapters_file_path)
-            if not chapters_data or 'chapters' not in chapters_data:
-                chapters_data = {'chapters': []}
-            
             new_chapter_title = content_item.title if content_item.title else f"Chapter {str_next_chapter_num}"
             chapters_data['chapters'].append(new_chapter_title)
             if not _save_json(chapters_file_path, chapters_data):
@@ -303,36 +292,41 @@ def create_notebook_and_chapters_from_processing(
                 continue
 
             # 2c. Create the structure file
-            # The PDF path might not be directly available here in the same way,
-            # so we'll create a placeholder or extract from metadata if possible.
             original_pdf_filename = "source.pdf" # Default
-            if "Source: " in content_item.metadata:
-                # Attempt to parse filename from metadata string like "Source: my_file.pdf, Text length: 12345 chars"
+            if content_item.metadata and "Source: " in content_item.metadata:
                 try:
+                    # Parse filename from metadata like "Source: my_file.pdf, ..."
                     original_pdf_filename = content_item.metadata.split(',')[0].replace('Source: ', '').strip()
                 except Exception:
                     pass # Keep default if parsing fails
 
+            # This path is a placeholder; real-world implementation might need a more robust way
+            # to link generated content back to a specific uploaded file if multiple files are processed at once.
+            placeholder_path = f"/static/uploads/{notebook_id}/{original_pdf_filename}"
             structure_content = [{
                 "name": original_pdf_filename,
                 "type": "file",
-                "path": f"/static/uploads/{notebook_id}/{original_pdf_filename}" # Placeholder path
+                "path": placeholder_path
             }]
             if not _save_json(new_structure_path, structure_content):
                 print(f"Failed to save structure for chapter {str_next_chapter_num} in notebook {notebook_id}")
                 continue
         
         # 3. Update the filesCount for the notebook
+        # Re-load the final chapters data to get the accurate count
         final_chapters_data = load_json(os.path.join(DATA_DIR, 'chapters', f'{notebook_id}.json'))
-        files_count = len(final_chapters_data.get('chapters', []))
+        files_count = 0
+        if final_chapters_data and 'chapters' in final_chapters_data:
+            files_count = len(final_chapters_data['chapters'])
         
         all_notebooks = load_json(os.path.join(DATA_DIR, 'notebooks.json'))
-        for nb in all_notebooks:
-            if nb['id'] == notebook_id:
-                nb['filesCount'] = files_count
-                nb['lastUpdated'] = datetime.now().isoformat()
-                break
-        _save_json(os.path.join(DATA_DIR, 'notebooks.json'), all_notebooks)
+        if all_notebooks:
+            for nb in all_notebooks:
+                if nb['id'] == notebook_id:
+                    nb['filesCount'] = files_count
+                    nb['lastUpdated'] = datetime.now().isoformat()
+                    break
+            _save_json(os.path.join(DATA_DIR, 'notebooks.json'), all_notebooks)
 
         return notebook_id
 
