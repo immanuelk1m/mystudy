@@ -23,12 +23,12 @@ async def read_notebook_detail(notebook_id: str):
         raise HTTPException(status_code=404, detail=f"Notebook with ID {notebook_id} not found")
     return notebook
 
-@router.get("/{notebook_id}/chapters", response_model=models.ChapterList)
+@router.get("/{notebook_id}/chapters", response_model=List[models.Chapter]) # Changed response_model
 async def read_notebook_chapters(notebook_id: str):
-    chapters = crud.get_chapters_for_notebook(notebook_id)
-    if chapters is None:
+    chapter_list_obj = crud.get_chapters_for_notebook(notebook_id) # This returns a ChapterList object
+    if chapter_list_obj is None:
         raise HTTPException(status_code=404, detail=f"Chapters for notebook ID {notebook_id} not found")
-    return chapters
+    return chapter_list_obj.chapters # Return the actual list of Chapter objects
 
 @router.get("/{notebook_id}/content", response_model=models.DocumentContent)
 async def read_document_content(

@@ -131,10 +131,26 @@ def get_notebook_by_id(notebook_id: str) -> Optional[models.Notebook]:
     return None
 
 def get_chapters_for_notebook(notebook_id: str) -> Optional[models.ChapterList]:
-    chapters_data = load_json(os.path.join(DATA_DIR, 'chapters', f'{notebook_id}.json'))
-    if chapters_data:
-        return models.ChapterList(**chapters_data)
-    return None
+    chapters_file_path = os.path.join(DATA_DIR, 'chapters', f'{notebook_id}.json')
+    raw_data = load_json(chapters_file_path)
+
+    if raw_data is None:
+        return None # File not found or invalid JSON
+
+    # Expecting raw_data to be like {"chapters": ["title1", "title2", ...]}
+    chapter_titles: List[str] = raw_data.get('chapters', [])
+
+    transformed_chapters: List[models.Chapter] = []
+    for i, title in enumerate(chapter_titles):
+        transformed_chapters.append(
+            models.Chapter(
+                id=i + 1,  # 1-based ID
+                title=title,
+                notebook_id=notebook_id
+            )
+        )
+
+    return models.ChapterList(chapters=transformed_chapters)
 
 def get_document_content(notebook_id: str, chapter_number: str) -> Optional[models.DocumentContent]:
     # Assuming chapter_number in path is 1-indexed as per frontend examples
