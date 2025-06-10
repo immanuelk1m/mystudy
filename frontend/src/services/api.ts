@@ -120,7 +120,7 @@ export const uploadMultiplePdfs = async (
 
 // 추가적인 인터페이스 정의
 export interface Notebook {
-  id: number;
+  id: string;
   title: string;
   // 백엔드 모델에 따라 필드를 추가/수정하세요.
   // 예: created_at: string;

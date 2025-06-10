@@ -4,7 +4,6 @@ from .. import crud, models, ai_services # Use relative imports
 import os
 
 router = APIRouter(
-    prefix="/api/notebooks",
     tags=["notebooks"],
 )
 
