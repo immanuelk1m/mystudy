@@ -48,20 +48,15 @@ class QuizQuestion(BaseModel):
 
 # For Document Content Blocks (flexible for now)
 class DocumentContentBlock(BaseModel):
-    type: str
-    # Add other common fields or use Dict[str, Any] for more flexibility
-    text: Optional[str] = None
-    level: Optional[int] = None # For headings
-    # ... other potential fields like src for images, code for code blocks, etc.
-    # For maximum flexibility initially, allow any other fields:
-    # class Config:
-    #     extra = "allow"
+    type: str = Field(..., description="Type of content block (e.g., 'heading', 'paragraph', 'code').")
+    content: str = Field(..., description="The actual content of the block.")
+    level: Optional[int] = Field(None, description="Heading level (1-6) for 'heading' type blocks.")
 
 # Main Document Content Model
 class DocumentContent(BaseModel):
     title: str
     metadata: str
-    documentContent: List[Dict[str, Any]] # Using Dict for flexibility as per spec
+    documentContent: List[Dict[str, Any]] = Field(..., description="A list of content blocks, where each block is a dictionary with 'type', 'content', and optional 'level'.")
     aiNotes: AINotes
     quiz: List[QuizQuestion]
 

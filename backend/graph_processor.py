@@ -127,12 +127,13 @@ async def generate_chapter_content(state: ProcessingState) -> ProcessingState:
     generated_contents = []
     for i, result in enumerate(generated_contents_results):
         if isinstance(result, Exception):
-            print(f"챕터 {i+1} 콘텐츠 생성 중 오류 발생: {result}")
-        elif result:
+            print(f"Error during content generation for chapter {i+1}: {result}")
+        elif result is not None:
             generated_contents.append(result)
-            print(f"챕터 {i+1} 콘텐츠 생성 완료.")
+            # The success message is now printed inside ai_services.py
         else:
-            print(f"챕터 {i+1} 콘텐츠 생성에 실패했습니다.")
+            # This case handles when generate_content_for_chapter explicitly returns None
+            print(f"Failed to generate content for chapter {i+1}. The generation function returned None.")
 
     state['generated_content'] = generated_contents
     print(f"총 {len(generated_contents)}개의 챕터에 대한 콘텐츠 생성을 완료했습니다.")

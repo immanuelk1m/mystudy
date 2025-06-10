@@ -185,9 +185,9 @@ async def suggest_notebook_for_text(text_content: str, existing_notebook_titles:
 # --- Full Chapter Generation from PDF Text ---
 
 class LLMDocumentContentBlock(BaseModel):
-    block_type: str = PydanticField(..., description="Type of content block, e.g., 'paragraph', 'heading'.") # Renamed from 'type'
-    text: Optional[str] = PydanticField(None, description="Text content for paragraph, heading, etc.")
-    level: Optional[int] = PydanticField(None, description="Heading level (e.g., 1, 2, 3) if type is 'heading'.")
+    type: str = PydanticField(..., description="Type of content block (e.g., 'heading', 'paragraph', 'code').")
+    content: str = PydanticField(..., description="The actual content of the block.")
+    level: Optional[int] = PydanticField(None, description="Heading level (1-6) for 'heading' type blocks.")
     # image_url: Optional[str] = PydanticField(None, description="URL for image content if type is 'image'.") lists, images, code
 
 class LLMQuizQuestion(BaseModel):
@@ -247,6 +247,11 @@ async def generate_content_for_chapter(text_content: str, original_pdf_filename:
         # Generate title and summary
         generated_data = await chain.ainvoke({"text_content": text_content, "format_instructions": parser.get_format_instructions()})
 
+        if not isinstance(generated_data, dict):
+            print(f"[CONTENT GEN] Error: LLM output was not a dictionary as expected. Received type: {type(generated_data)}")
+            print(f"Raw LLM output: {generated_data}")
+            return None
+
         title = generated_data.get("title", "Untitled Chapter")
         summary = generated_data.get("summary", "")
 
@@ -256,7 +261,7 @@ async def generate_content_for_chapter(text_content: str, original_pdf_filename:
         # `quiz` and other complex parts are omitted for stability, as per the user request.
 
         document_blocks = [
-            models.DocumentContentBlock(type="paragraph", text=text_content)
+            {"type": "paragraph", "content": text_content}
         ]
 
         ai_notes = models.AINotes(
@@ -281,8 +286,13 @@ async def generate_content_for_chapter(text_content: str, original_pdf_filename:
         print(f"[CONTENT GEN] Successfully generated content for chapter: '{title}'")
         return document_content
 
+    except ValidationError as e:
+        print(f"[CONTENT GEN] Pydantic validation error in LLM output: {e}")
+        return None
     except Exception as e:
-        print(f"[CONTENT GEN] Error generating chapter content with LLM: {e}")
+        print(f"[CONTENT GEN] Unexpected error in generate_content_for_chapter: {e}")
+        import traceback
+        traceback.print_exc()
         return None
 
 async def classify_pdf_text(text_content: str, existing_classes: List[str]) -> Optional[str]:
