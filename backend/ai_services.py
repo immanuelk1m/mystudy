@@ -77,7 +77,8 @@ async def generate_ai_notes_from_text(text_content: str) -> Optional[models.AINo
     parser = JsonOutputParser(pydantic_object=LLMAINotes)
 
     prompt_template = ChatPromptTemplate.from_messages([
-        ("system", "You are an expert academic assistant. Your task is to analyze the provided text content and generate comprehensive AI Notes. "
+        ("system", "모든 생성되는 텍스트는 반드시 한국어로 작성해 주십시오. 응답은 한국어로만 제공되어야 합니다. "
+                   "You are an expert academic assistant. Your task is to analyze the provided text content and generate comprehensive AI Notes. "
                    "The AI Notes should include a summary, key concepts with definitions (some definitions can be simple strings, others can have 'easy', 'medium', 'hard' levels), important terms with definitions, and a hierarchical outline. "
                    "Ensure IDs for outline items are unique and URL-friendly (e.g., 'topic-subsection'). "
                    "Format your response as a JSON object that strictly adheres to the following Pydantic schema: \n{format_instructions}"),
@@ -152,7 +153,8 @@ async def suggest_notebook_for_text(text_content: str, existing_notebook_titles:
 
 
     prompt_template = ChatPromptTemplate.from_messages([
-        ("system", "You are an expert academic assistant specializing in organizing study materials. "
+        ("system", "모든 생성되는 텍스트는 반드시 한국어로 작성해 주십시오. 응답은 한국어로만 제공되어야 합니다. "
+                   "You are an expert academic assistant specializing in organizing study materials. "
                    "Your task is to analyze the provided text content and suggest a concise and descriptive title for a study notebook that would contain this content. "
                    "The title should ideally be 3-5 words long and clearly reflect the main subject or topic of the text. "
                    f"{existing_notebooks_prompt_segment}"
@@ -242,14 +244,44 @@ async def generate_content_for_chapter(chapter_title: str, chapter_text: str, or
     parser = JsonOutputParser(pydantic_object=LLMGeneratedChapter)
 
     prompt_template = ChatPromptTemplate.from_messages([
-        ("system", "You are an expert academic assistant. Your task is to analyze the provided text content and generate a complete, structured chapter document. "
+        ("system", "모든 생성되는 텍스트는 반드시 한국어로 작성해 주십시오. 응답은 한국어로만 제공되어야 합니다. "
+                   "You are an expert academic assistant. Your task is to analyze the provided text content and generate a complete, structured chapter document. "
                    "The document must include: "
-                   "1. A concise and relevant title (you can refine the provided one if necessary). "
+                   "1. A concise and relevant title (you can refine the provided one if necessary). This must be in Korean. "
                    "2. Metadata including the source PDF filename and text length. "
-                   "3. The full content broken down into logical blocks (headings, paragraphs). "
-                   "4. Comprehensive AI Notes: a summary, 3-5 key concepts, 5-7 important terms, and a hierarchical outline. "
-                   "5. A quiz with 2-3 multiple-choice questions to test understanding. "
-                   "Ensure your entire response is a single JSON object that strictly adheres to the following Pydantic schema: \n{format_instructions}"),
+                   "3. The full content broken down into logical blocks (headings, paragraphs). All text in these blocks must be in Korean. "
+                   "4. Comprehensive AI Notes (summary, key concepts, important terms, outline). All text in AI Notes must be in Korean. "
+                   "5. A quiz section containing a list of 2-3 multiple-choice questions designed to test understanding of the material. "
+                   "   - Each quiz question must be an object strictly following this JSON structure: "
+                   "     ```json\n"
+                   "     {\n"
+                   "       \"question\": \"여기에 한국어로 된 질문을 넣어주세요.\",\n"
+                   "       \"options\": [\n"
+                   "         \"한국어 옵션 1\",\n"
+                   "         \"한국어 옵션 2\",\n"
+                   "         \"한국어 옵션 3\",\n"
+                   "         \"한국어 옵션 4\"\n"
+                   "       ],\n"
+                   "       \"answerIndex\": 0, // 0부터 시작하는 정수형 인덱스 (옵션 리스트 기준)\n"
+                   "       \"explanation\": \"여기에 한국어로 된 정답 해설을 넣어주세요.\"\n"
+                   "     }\n"
+                   "     ```\n"
+                   "   - `question` 필드는 명확하고 완전한 한국어 문장이어야 합니다.\n"
+                   "   - `options` 필드는 최소 3개에서 최대 5개의 한국어 선택지를 포함하는 리스트여야 합니다.\n"
+                   "   - `answerIndex` 필드는 `options` 리스트에서 정답에 해당하는 선택지의 0부터 시작하는 정확한 정수 인덱스여야 하며, 반드시 포함되어야 합니다.\n"
+                   "   - `explanation` 필드는 정답에 대한 간결하고 명확한 한국어 해설이어야 합니다.\n"
+                   "   - 모든 텍스트 필드(question, options, explanation)는 반드시 한국어로 작성되어야 합니다.\n"
+                   "   - 예시 퀴즈 질문:\n"
+                   "     ```json\n"
+                   "     {\n"
+                   "       \"question\": \"대한민국의 수도는 어디입니까?\",\n"
+                   "       \"options\": [\"부산\", \"서울\", \"인천\", \"대구\"],\n"
+                   "       \"answerIndex\": 1,\n"
+                   "       \"explanation\": \"서울은 대한민국의 공식 수도입니다.\"\n"
+                   "     }\n"
+                   "     ```\n"
+                   "Ensure your entire response is a single JSON object that strictly adheres to the Pydantic schema provided via {format_instructions}. "
+                   "Pay close attention to the quiz structure and ensure all its elements are correctly formatted and in Korean."),
         ("human", "The chapter is titled '{chapter_title}'. The source PDF is '{original_pdf_filename}'. "
                   "Please generate a complete chapter document for the following text:\n\n--BEGIN TEXT CONTENT--\n{text_content}\n--END TEXT CONTENT--")
     ])
@@ -439,11 +471,12 @@ async def classify_pdf_text(text_content: str, existing_classes: List[str]) -> O
 
     classes_str = "\n - ".join(existing_classes)
     prompt_template = ChatPromptTemplate.from_messages([
-        ("system", "You are an expert academic librarian. Your task is to analyze the provided text and determine the most appropriate subject class for it. "
+        ("system", "모든 생성되는 텍스트는 반드시 한국어로 작성해 주십시오. 응답은 한국어로만 제공되어야 합니다. "
+                   "You are an expert academic librarian. Your task is to analyze the provided text and determine the most appropriate subject class for it. "
                    "You are given a list of existing classes. First, try to classify the document into one of these existing classes. "
                    f"Existing classes:\n - {classes_str}\n\n"
                    "If the text fits well into one of the existing classes, respond with that exact class name. "
-                   "If the text represents a new, distinct topic not covered by the existing classes, suggest a new, concise class name (e.g., 'Quantum Mechanics', 'Ancient Roman History'). "
+                   "If the text represents a new, distinct topic not covered by the existing classes, suggest a new, concise class name (e.g., '양자 역학', '고대 로마사'). " # Korean examples
                    "Respond ONLY with the single, most appropriate class name and nothing else."),
         ("human", "Please classify the following text:\n\n--BEGIN TEXT CONTENT--\n{text_content}\n--END TEXT CONTENT--")
     ])
@@ -487,11 +520,13 @@ async def segment_text_into_chapters(text_content: str, document_class: str) -> 
     # The prompt needs to be carefully engineered to guide the LLM.
     # We ask for the output to be a JSON array of strings for robust parsing.
     prompt_template = ChatPromptTemplate.from_messages([
-        ("system", "You are an expert in content analysis and structuring. Your task is to segment a long text document into logical, semantically complete chapters. "
+        ("system", "모든 생성되는 텍스트는 반드시 한국어로 작성해 주십시오. 응답은 한국어로만 제공되어야 합니다. " # Though this prompt mainly structures existing text
+                   "You are an expert in content analysis and structuring. Your task is to segment a long text document into logical, semantically complete chapters. "
+                   "The input text will be in Korean. Ensure that the segmented chapter texts remain in Korean. " # Reinforce input/output language
                    "Consider the document's overall topic, which is '{document_class}'. "
                    "Each chapter should represent a coherent sub-topic or section of the main content. Avoid creating chapters that are too short (e.g., just a few sentences) or excessively long. "
                    "The output MUST be a JSON-formatted array of strings, where each string is the full text of a chapter. "
-                   "For example: [\"Chapter 1 text...\", \"Chapter 2 text...\", \"Chapter 3 text...\"]"
+                   "For example: [\"한국어 챕터 1 전문...\", \"한국어 챕터 2 전문...\", \"한국어 챕터 3 전문...\"]" # Korean example
                    "Do not include any other text or explanation outside of this JSON array."),
         ("human", "Please segment the following text into chapters:\n\n--BEGIN TEXT CONTENT--\n{text_content}\n--END TEXT CONTENT--")
     ])
@@ -568,9 +603,11 @@ async def analyze_holistic_structure(all_pdf_texts: List[Dict[str, str]]) -> Opt
         combined_text_input += f"--- END OF DOCUMENT: {pdf_data['filename']} ---\n\n"
 
     prompt_template = ChatPromptTemplate.from_messages([
-        ("system", "You are an expert curriculum designer. Your task is to analyze the content from multiple documents and create a single, unified, and coherent study notebook structure. "
-                   "First, create a single, overarching title for the entire notebook that synthesizes the topics from all documents. "
-                   "Second, break down the combined content into a logical sequence of chapters. Each chapter should cover a specific sub-topic and be sourced from the provided texts. "
+        ("system", "모든 생성되는 텍스트는 반드시 한국어로 작성해 주십시오. 응답은 한국어로만 제공되어야 합니다. "
+                   "You are an expert curriculum designer. Your task is to analyze the content from multiple documents and create a single, unified, and coherent study notebook structure. "
+                   "All generated titles and summaries must be in Korean. " # Specific reinforcement
+                   "First, create a single, overarching title for the entire notebook that synthesizes the topics from all documents. This title must be in Korean. "
+                   "Second, break down the combined content into a logical sequence of chapters. Each chapter should cover a specific sub-topic and be sourced from the provided texts. Chapter titles and summaries must be in Korean. "
                    "It is crucial that you identify which original document each chapter's content comes from. "
                    "The final output must be a JSON object that strictly adheres to the following Pydantic schema:\n{format_instructions}"),
         ("human", "Please create a holistic notebook structure from the following documents:\n\n{combined_text}")
