@@ -3,6 +3,7 @@ from dotenv import load_dotenv
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 
+import logging # Added for this subtask
 # .env 파일을 이 모듈의 최상단에서 로드하여, 임포트 순서에 관계없이
 # llm 객체 초기화 전에 환경 변수가 확실히 로드되도록 합니다.
 env_path = Path(__file__).parent / '.env'
@@ -263,6 +264,14 @@ async def generate_content_for_chapter(chapter_title: str, chapter_text: str, or
             "format_instructions": parser.get_format_instructions()
         })
 
+        # Early exit if LLM output parsing failed or is not a dictionary
+        if not isinstance(generated_data, dict):
+            logging.error(
+                f"[CONTENT GEN] LLM output for chapter '{chapter_title}' (source: {original_pdf_filename}) "
+                f"was not a valid dictionary or was None after parsing. Type: {type(generated_data)}"
+            )
+            return None
+
         # Transform outline: 'title' to 'text' in generated_data before LLMGeneratedChapter parsing
         if isinstance(generated_data, dict) and \
            'ai_notes' in generated_data and \
@@ -313,6 +322,63 @@ async def generate_content_for_chapter(chapter_title: str, chapter_text: str, or
                 if isinstance(block, dict) and 'content' in block and isinstance(block['content'], list):
                     # Join list of strings into a single string, separated by newlines.
                     block['content'] = '\n'.join(str(c) for c in block['content']) # Ensure all items are strings
+
+        # Process quiz data: transform 'answer' text to 'answerIndex'
+        if 'quiz' in generated_data and isinstance(generated_data.get('quiz'), list):
+            processed_quiz_questions = []
+            for question_dict in generated_data['quiz']:
+                if not isinstance(question_dict, dict):
+                    logging.warning(f"[CONTENT GEN] Skipping non-dictionary item in quiz data for chapter '{chapter_title}', PDF '{original_pdf_filename}': {question_dict}")
+                    continue
+
+                options = question_dict.get('options')
+                answer_text = question_dict.get('answer') # LLM might provide 'answer' as text
+
+                # Scenario 1: 'answerIndex' is present (ideal case from LLM based on LLMQuizQuestion model)
+                if 'answerIndex' in question_dict:
+                    # Ensure 'answer' text field is removed if 'answerIndex' is authoritative
+                    if 'answer' in question_dict:
+                        del question_dict['answer']
+                    processed_quiz_questions.append(question_dict)
+                    continue
+
+                # Scenario 2: 'answerIndex' is missing, but 'answer' text and 'options' are present
+                if isinstance(answer_text, str) and isinstance(options, list) and options:
+                    try:
+                        answer_index = -1
+                        for i, opt_text in enumerate(options):
+                            if str(opt_text).strip().lower() == str(answer_text).strip().lower():
+                                answer_index = i
+                                break
+
+                        if answer_index != -1:
+                            question_dict['answerIndex'] = answer_index
+                        else:
+                            logging.warning(
+                                f"[CONTENT GEN] Could not find answer '{answer_text}' in options {options} for question '{question_dict.get('question')}' "
+                                f"in chapter '{chapter_title}', PDF '{original_pdf_filename}'. Setting answerIndex to 0 as fallback."
+                            )
+                            question_dict['answerIndex'] = 0 # Fallback
+
+                        if 'answer' in question_dict: # Remove the text 'answer' field
+                            del question_dict['answer']
+                        processed_quiz_questions.append(question_dict)
+
+                    except Exception as e:
+                        logging.error(
+                            f"[CONTENT GEN] Error processing quiz question '{question_dict.get('question')}' in chapter '{chapter_title}', PDF '{original_pdf_filename}': {e}. Skipping."
+                        )
+                        continue # Skip this problematic question
+
+                # Scenario 3: Not enough info to determine answerIndex (e.g. no 'answer' text, or no 'options')
+                else:
+                    logging.warning(
+                        f"[CONTENT GEN] Skipping quiz question due to missing 'answer' text, 'options' list, or 'answerIndex' for question "
+                        f"'{question_dict.get('question')}' in chapter '{chapter_title}', PDF '{original_pdf_filename}'."
+                    )
+                    continue # Skip this question
+
+            generated_data['quiz'] = processed_quiz_questions
 
         # The parser returns a dict. We can now build our DocumentContent from it.
         llm_chapter = LLMGeneratedChapter(**generated_data)
