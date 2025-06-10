@@ -14,80 +14,10 @@
     "filesCount": 11
   },
   {
-    "id": "36298080-d788-4510-87bf-4cece7c4f3a7",
-    "title": "Advanced SQL Joins & Operations",
-    "description": "Notebook for Advanced SQL Joins & Operations.",
-    "lastUpdated": "2025-06-05T01:30:43.183519",
-    "filesCount": 0
-  },
-  {
-    "id": "4be8ce1a-8559-4b11-bba1-19d809fd2afc",
-    "title": "Advanced SQL: Views & Window Functions",
-    "description": "Notebook for Advanced SQL: Views & Window Functions.",
-    "lastUpdated": "2025-06-05T01:31:08.861549",
-    "filesCount": 0
-  },
-  {
-    "id": "fe6cdefd-2948-4840-995e-365d709986ac",
-    "title": "Advanced SQL Joins",
-    "description": "Notebook for Advanced SQL Joins.",
-    "lastUpdated": "2025-06-05T01:32:29.567896",
-    "filesCount": 0
-  },
-  {
-    "id": "4928efb8-deba-4636-930f-ae1c8a9b9ae1",
-    "title": "Advanced SQL: Views & Functions",
-    "description": "Notebook for Advanced SQL: Views & Functions.",
-    "lastUpdated": "2025-06-05T01:32:54.363815",
-    "filesCount": 0
-  },
-  {
-    "id": "997129e3-22ef-483b-bc20-4ab423bf4c7a",
-    "title": "Introductory Micro & Macroeconomics",
-    "description": "Notebook for Introductory Micro & Macroeconomics.",
-    "lastUpdated": "2025-06-05T01:37:52.934177",
-    "filesCount": 0
-  },
-  {
-    "id": "1d47f95e-4eb0-48b7-8288-24a3d5162636",
-    "title": "Consumer Choice & Demand",
-    "description": "Notebook for Consumer Choice & Demand.",
-    "lastUpdated": "2025-06-05T01:38:06.487434",
-    "filesCount": 0
-  },
-  {
-    "id": "3041c2ad-a4f6-4767-89eb-d99cee535175",
-    "title": "Producer Theory & Cost Functions",
-    "description": "Notebook for Producer Theory & Cost Functions.",
-    "lastUpdated": "2025-06-05T01:38:22.418251",
-    "filesCount": 0
-  },
-  {
-    "id": "a18f67ac-22b7-4756-9122-b757d0213745",
-    "title": "Supply, Demand, & Market Equilibrium",
-    "description": "Notebook for Supply, Demand, & Market Equilibrium.",
-    "lastUpdated": "2025-06-05T01:38:39.359731",
-    "filesCount": 0
-  },
-  {
-    "id": "aebd4b42-8795-4301-bace-027f4ccf61c9",
-    "title": "Notebook - 3 Consumer problem and demand curve",
-    "description": "Notebook for Notebook - 3 Consumer problem and demand curve.",
-    "lastUpdated": "2025-06-05T02:14:25.747243",
-    "filesCount": 0
-  },
-  {
-    "id": "4429b191-5755-4c0a-88e7-1d5b66d9071e",
-    "title": "Notebook - 4 Firm optimal choice and supply curve",
-    "description": "Notebook for Notebook - 4 Firm optimal choice and supply curve.",
-    "lastUpdated": "2025-06-05T02:14:31.529081",
-    "filesCount": 0
-  },
-  {
-    "id": "01a11c09-e6eb-407f-a243-4a86e6bdb0eb",
-    "title": "Introduction to Economics",
-    "description": "Notebook for Introduction to Economics.",
-    "lastUpdated": "2025-06-05T02:56:28.171796",
-    "filesCount": 0
+    "id": "3",
+    "title": "데이터베이스",
+    "description": "데이터베이스 개념과 SQL 활용",
+    "lastUpdated": "2025-06-03T00:00:00Z",
+    "filesCount": 4
   }
 ]

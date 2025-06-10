@@ -8,12 +8,30 @@ import os
 
 # 상태 정의
 class ProcessingState(TypedDict):
+    run_id: str
     pdf_file_path: str
     pdf_text: str
     document_class: str
     segmented_chapters: List[str]
     generated_content: Annotated[Sequence[dict], operator.add]
+    log_entries: Annotated[Sequence[dict], operator.add]
     final_result: str
+
+def _log_node_state(node_name: str, state: ProcessingState) -> ProcessingState:
+   """Helper function to log the state after a node's execution, excluding large fields."""
+   state_to_log = state.copy()
+   # Exclude large fields to keep logs concise
+   state_to_log.pop('pdf_text', None)
+   state_to_log.pop('segmented_chapters', None)
+   state_to_log.pop('generated_content', None) # Also exclude this as it can be large
+   
+   log_entry = {
+       "node": node_name,
+       "status": "completed",
+       "state_snapshot": state_to_log
+   }
+   state['log_entries'] = state.get('log_entries', []) + [log_entry]
+   return state
 
 # 노드 구현
 def start_processing(state: ProcessingState) -> ProcessingState:
@@ -29,7 +47,7 @@ def start_processing(state: ProcessingState) -> ProcessingState:
         state['pdf_text'] = ""
     else:
         state['pdf_text'] = text
-    return state
+    return _log_node_state("start_processing", state)
 
 async def classify_document(state: ProcessingState) -> ProcessingState:
     print("---문서 분류 중---")
@@ -62,7 +80,7 @@ async def classify_document(state: ProcessingState) -> ProcessingState:
         print(f"문서 분류 중 오류 발생: {e}")
         state['document_class'] = "Classification Error"
         
-    return state
+    return _log_node_state("classify_document", state)
 
 async def segment_chapters(state: ProcessingState) -> ProcessingState:
     print("---챕터 분할 중---")
@@ -91,7 +109,7 @@ async def segment_chapters(state: ProcessingState) -> ProcessingState:
         print(f"챕터 분할 중 오류 발생: {e}")
         state['segmented_chapters'] = []
         
-    return state
+    return _log_node_state("segment_chapters", state)
 
 async def generate_chapter_content(state: ProcessingState) -> ProcessingState:
     print("---챕터별 콘텐츠 생성 중---")
@@ -123,42 +141,52 @@ async def generate_chapter_content(state: ProcessingState) -> ProcessingState:
 
     state['generated_content'] = generated_contents
     print(f"총 {len(generated_contents)}개의 챕터에 대한 콘텐츠 생성을 완료했습니다.")
-    return state
+    return _log_node_state("generate_chapter_content", state)
 
 
 def finish_processing(state: ProcessingState) -> ProcessingState:
     print("---모든 처리 완료 및 파일 저장 중---")
     notebook_title = state.get('document_class')
     generated_content = state.get('generated_content')
+    run_id = state.get('run_id')
 
     if not notebook_title or not generated_content:
         error_msg = "최종 결과를 저장하기 위한 정보(노트북 제목 또는 생성된 콘텐츠)가 부족합니다."
         print(error_msg)
         state['final_result'] = f"Error: {error_msg}"
-        return state
+    else:
+        try:
+            # crud 함수를 호출하여 파일 시스템에 결과 저장
+            notebook_id = crud.create_notebook_and_chapters_from_processing(
+                notebook_title=notebook_title,
+                generated_contents=generated_content
+            )
 
-    try:
-        # crud 함수를 호출하여 파일 시스템에 결과 저장
-        notebook_id = crud.create_notebook_and_chapters_from_processing(
-            notebook_title=notebook_title,
-            generated_contents=generated_content
-        )
+            if notebook_id:
+                success_msg = f"'{notebook_title}' 노트북(ID: {notebook_id})에 {len(generated_content)}개의 챕터가 성공적으로 처리 및 저장되었습니다."
+                print(success_msg)
+                state['final_result'] = success_msg
+            else:
+                error_msg = "CRUD 작업을 통해 노트북과 챕터를 저장하는 데 실패했습니다."
+                print(error_msg)
+                state['final_result'] = f"Error: {error_msg}"
 
-        if notebook_id:
-            success_msg = f"'{notebook_title}' 노트북(ID: {notebook_id})에 {len(generated_content)}개의 챕터가 성공적으로 처리 및 저장되었습니다."
-            print(success_msg)
-            state['final_result'] = success_msg
-        else:
-            error_msg = "CRUD 작업을 통해 노트북과 챕터를 저장하는 데 실패했습니다."
+        except Exception as e:
+            error_msg = f"최종 처리 및 저장 단계에서 예외 발생: {e}"
             print(error_msg)
             state['final_result'] = f"Error: {error_msg}"
 
-    except Exception as e:
-        error_msg = f"최종 처리 및 저장 단계에서 예외 발생: {e}"
-        print(error_msg)
-        state['final_result'] = f"Error: {error_msg}"
+    # Log the final state before saving the logs
+    final_logged_state = _log_node_state("finish_processing", state)
+    
+    # Save all accumulated logs to a file
+    if run_id:
+        if not crud.save_run_log(run_id, final_logged_state['log_entries']):
+            print(f"Warning: Failed to save run log for run_id: {run_id}")
+    else:
+        print("Warning: run_id not found, skipping log saving.")
         
-    return state
+    return final_logged_state
 
 # 그래프 정의
 workflow = StateGraph(ProcessingState)
@@ -184,9 +212,13 @@ workflow.set_entry_point("start_processing")
 app = workflow.compile()
 
 # 그래프 실행 함수
-async def run_graph(pdf_file_path: str):
-    # 'generated_content'는 operator.add에 의해 누적되므로 빈 리스트로 초기화해야 합니다.
-    # 나머지 키는 첫 번째 노드에서 채워집니다.
-    inputs = {"pdf_file_path": pdf_file_path, "generated_content": []}
+async def run_graph(run_id: str, pdf_file_path: str):
+    # 'generated_content'와 'log_entries'는 operator.add에 의해 누적되므로 빈 리스트로 초기화해야 합니다.
+    inputs = {
+        "run_id": run_id,
+        "pdf_file_path": pdf_file_path,
+        "generated_content": [],
+        "log_entries": []
+    }
     final_state = await app.ainvoke(inputs)
     return final_state

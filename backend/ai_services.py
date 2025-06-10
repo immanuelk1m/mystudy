@@ -21,7 +21,7 @@ from . import models # Assuming models.py is in the same directory or accessible
 # load_dotenv가 호출되었으므로, 라이브러리가 자동으로 환경에서 GOOGLE_API_KEY를 찾습니다.
 # langchain 라이브러리가 자동으로 키를 찾도록 명시적인 파라미터를 제거하고,
 # 모델 이름을 안정적인 최신 버전으로 업데이트합니다.
-llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash-latest", temperature=0.7)
+llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash-preview-05-20", temperature=0.7)
 
 # --- PDF Processing ---
 def extract_text_from_pdf(pdf_file_path: str) -> str:
@@ -218,12 +218,18 @@ async def generate_chapter_from_pdf_text(text_content: str, original_pdf_filenam
 
     prompt_template = ChatPromptTemplate.from_messages([
         ("system", f"You are an expert content creator and academic assistant. Your task is to analyze the provided text, which was extracted from a PDF named '{original_pdf_filename}', and generate a complete, well-structured chapter. "
-                   "The chapter should include: a concise title, metadata (mentioning the source PDF and text length), a series of document content blocks (like paragraphs and headings to structure the main information), comprehensive AI Notes (summary, key concepts, important terms, outline), and a short quiz (2-3 questions). "
-                   "For document_content_blocks, use 'paragraph' for general text and 'heading' for section titles (specify 'level' for headings, e.g., 2 for main sections, 3 for subsections). "
-                   "IMPORTANT for 'ai_notes.key_concepts': Each item in the 'key_concepts' list MUST have a non-null 'term' (string) AND a non-null 'definition' (which can be a simple string OR a KeyConceptDefinition object). If 'definition' is a KeyConceptDefinition object, at least one of its 'easy', 'medium', or 'hard' fields must be a string; others can be null if not applicable. These fields are critical for successful parsing. "
-                   "Ensure IDs for outline items within AI Notes are unique and URL-friendly. "
+                   "The chapter should include: a concise title, metadata, a series of document content blocks, comprehensive AI Notes, and a short quiz. "
+                   "Please adhere strictly to the following field names and structures:\n"
+                   "- **metadata**: An object with `source_pdf` (string) and `text_length_characters` (integer).\n"
+                   "- **document_content_blocks**: A list of objects. Each object must have a `block_type` (e.g., 'paragraph', 'heading') and `text` (string). For headings, also include `level` (integer).\n"
+                   "- **ai_notes**: An object containing:\n"
+                   "  - `summary`: (string)\n"
+                   "  - `key_concepts`: A list of objects, each with `term` (string) and `definition` (string or object with `easy`, `medium`, `hard` fields).\n"
+                   "  - `important_terms`: A list of objects, each with `term` (string) and `definition` (string).\n"
+                   "  - `outline`: A list of objects, each with `text` (string), `id` (string), and optional `children` (a list of nested outline objects).\n"
+                   "- **quiz**: A list of objects. Each object must have `question` (string), `answer` (string), and `type` (e.g., 'short_answer', 'multiple_choice'). For multiple choice, include `options` (list of strings) and `answer_index` (integer).\n"
                    "Format your entire response as a single JSON object that strictly adheres to the following Pydantic schema: \n{{format_instructions}}"),
-        ("human", "Please generate a full chapter from the following text content: \n\n--BEGIN TEXT CONTENT--\n{text_content}\n--END TEXT CONTENT--\n\nRemember to include a title, metadata, document_content_blocks, ai_notes, and a quiz in your response.")
+        ("human", "Please generate a full chapter from the following text content: \n\n--BEGIN TEXT CONTENT--\n{text_content}\n--END TEXT CONTENT--\n\nRemember to include a title, metadata (with 'text_length_characters'), document_content_blocks (with 'block_type' and 'text'), ai_notes (with important_terms as objects and outline items with 'text' and 'children'), and a quiz (with 'type' for each question) in your response.")
     ])
 
     def _log_llm_output_before_parsing(item):

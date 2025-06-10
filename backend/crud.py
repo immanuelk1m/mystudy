@@ -19,6 +19,10 @@ UPLOADS_DIR = os.path.join(STATIC_DIR, 'uploads')
 if not os.path.exists(UPLOADS_DIR):
     os.makedirs(UPLOADS_DIR)
 
+LOGS_DIR = os.path.join(DATA_DIR, 'logs')
+RUN_LOGS_DIR = os.path.join(LOGS_DIR, 'runs')
+os.makedirs(RUN_LOGS_DIR, exist_ok=True)
+
 def load_json(file_path: str) -> Any:
     """Helper function to load a JSON file."""
     try:
@@ -335,3 +339,15 @@ def create_notebook_and_chapters_from_processing(
     except Exception as e:
         print(f"An error occurred during notebook and chapter creation from processing: {e}")
         return None
+
+# --- Functions for Run Logs ---
+
+def save_run_log(run_id: str, log_data: list) -> bool:
+   """Saves the log data for a specific run to a JSON file."""
+   log_file_path = os.path.join(RUN_LOGS_DIR, f"{run_id}.json")
+   return _save_json(log_file_path, log_data)
+
+def get_run_log(run_id: str) -> Optional[list]:
+   """Retrieves the log data for a specific run."""
+   log_file_path = os.path.join(RUN_LOGS_DIR, f"{run_id}.json")
+   return load_json(log_file_path)

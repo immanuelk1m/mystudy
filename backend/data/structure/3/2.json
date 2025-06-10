@@ -1,0 +1,32 @@
+[
+  {
+    "name": "생태학과 환경 강의 자료.pdf",
+    "type": "file",
+    "path": "chapter9_ecology_environment.pdf"
+  },
+  {
+    "name": "생태학과 환경 강의 슬라이드.pptx",
+    "type": "file",
+    "path": "chapter9_ecology_environment.pptx"
+  },
+  {
+    "name": "생태학과 환경 강의.mp4",
+    "type": "file",
+    "path": "/videos/chapter9_ecology_environment_lecture.mp4"
+  },
+  {
+    "name": "생태학과 환경 강의 녹음.mp3",
+    "type": "file",
+    "path": "/audio/chapter9_ecology_environment_lecture.mp3"
+  },
+  {
+    "name": "생태학과 환경 연습문제.pdf",
+    "type": "file",
+    "path": "/exercises/chapter9_ecology_environment_exercises.pdf"
+  },
+  {
+    "name": "생태학과 환경 연습문제 풀이.pdf",
+    "type": "file",
+    "path": "/exercises/chapter9_ecology_environment_solutions.pdf"
+  }
+]

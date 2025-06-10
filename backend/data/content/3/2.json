@@ -1,0 +1,531 @@
+{
+  "title": "SQL 심화: 윈도우 함수, 뷰, 키",
+  "metadata": "데이터베이스 SQL 심화 과정의 윈도우 함수, 뷰, 그리고 키 개념에 대한 강의 자료입니다. SQL:2003 표준부터 내장 함수로 도입된 윈도우 함수의 강력한 기능과 뷰를 통한 데이터 관리, 그리고 관계형 데이터베이스의 핵심인 키의 다양한 종류를 학습합니다.",
+  "documentContent": [
+    {
+      "type": "heading",
+      "level": 1,
+      "text": "윈도우 함수 개요"
+    },
+    {
+      "type": "paragraph",
+      "text": "윈도우 함수는 데이터베이스 SQL의 강력한 기능 중 하나로, SQL:2003 표준에서 처음 도입되었습니다. 이 함수는 놀이공원에서 친구들(데이터)이 줄 서 있을 때, '나랑 내 앞뒤 몇 명'처럼 특별한 그룹을 만들어서 계산해주는 '마법 계산기'와 같아요. 각 행마다 관련된 주변 행들을 '창(Window)'으로 보고 계산을 수행합니다."
+    },
+    {
+      "type": "paragraph",
+      "text": "가장 큰 특징은 기존 GROUP BY 절처럼 데이터를 합쳐서 줄이는 것이 아니라, 원래 데이터의 행 수는 그대로 유지하면서 각 행에 계산 결과만 추가해준다는 점입니다. 예를 들어, 전체 직원 목록을 보면서 각 직원이 속한 부서의 평균 급여를 함께 보고 싶을 때 유용하게 사용됩니다."
+    },
+    {
+      "type": "heading",
+      "level": 2,
+      "text": "윈도우 함수 유형"
+    },
+    {
+      "type": "paragraph",
+      "text": "윈도우 함수는 크게 세 가지 유형으로 나눌 수 있습니다:"
+    },
+    {
+      "type": "list",
+      "items": [
+        "**집계 윈도우 함수 (Aggregate window functions):** `SUM()`, `MAX()`, `MIN()`, `AVG()`, `COUNT()` 등 일반 집계 함수에 `OVER` 절을 붙여 사용합니다. 특정 그룹 내의 합계, 평균 등을 각 행에 반환할 때 사용합니다.",
+        "**순위 윈도우 함수 (Ranking window functions):** `RANK()`, `DENSE_RANK()`, `ROW_NUMBER()`, `PERCENT_RANK()`, `NTILE()` 등이 있습니다. 데이터를 정렬하고 순위를 매기거나 행 번호를 부여할 때 사용합니다.",
+        "**값 윈도우 함수 (Value window functions):** `LAG()`, `LEAD()`, `FIRST_VALUE()`, `LAST_VALUE()`, `NTH_VALUE()` 등이 있습니다. 현재 행을 기준으로 이전 또는 이후 행의 값을 가져오거나, 파티션 내의 첫 번째/마지막 값을 가져올 때 사용합니다."
+      ]
+    },
+    {
+      "type": "heading",
+      "level": 2,
+      "text": "윈도우 함수 구문 (OVER 절)"
+    },
+    {
+      "type": "paragraph",
+      "text": "모든 윈도우 함수는 `OVER` 절을 사용하여 동작할 윈도우(행 집합)를 정의합니다. `OVER` 절은 다음 세 가지 구성 요소로 이루어질 수 있습니다."
+    },
+    {
+      "type": "code",
+      "language": "sql",
+      "text": "SELECT WINDOW_FUNCTION ( [ ALL ] expression )\n       OVER ( [ PARTITION BY partition_list ] [ ORDER BY order_list ] [ frame_clause ] )\nFROM table;"
+    },
+    {
+      "type": "list",
+      "items": [
+        {
+          "term": "`PARTITION BY partition_list`",
+          "description": "전체 데이터를 하나 이상의 컬럼을 기준으로 논리적인 파티션(그룹)으로 나눕니다. 각 파티션 내에서 윈도우 함수가 독립적으로 계산됩니다. `PARTITION BY`가 생략되면 전체 테이블을 하나의 파티션으로 간주합니다."
+        },
+        {
+          "term": "`ORDER BY order_list`",
+          "description": "각 파티션 내의 행들을 정렬합니다. 순위 함수나 누적 계산(예: 누적 합계)을 사용할 때 필수적입니다. `ORDER BY`가 없으면 파티션 내의 행 순서가 보장되지 않아 예측 불가능한 결과가 나올 수 있습니다."
+        },
+        {
+          "term": "`frame_clause`",
+          "description": "파티션 내에서 함수가 동작할 행의 하위 집합인 '프레임'을 정의합니다. 현재 행을 기준으로 프레임의 시작과 끝을 지정할 수 있습니다. `ROWS`와 `RANGE` 두 가지 유형이 있습니다."
+        }
+      ]
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "프레임 절 (Frame Clause) 상세"
+    },
+    {
+      "type": "paragraph",
+      "text": "프레임 절은 윈도우 함수가 현재 행을 기준으로 어떤 범위의 행들을 포함하여 계산할지를 명시적으로 지정합니다. 이는 누적 합계, 이동 평균 등과 같은 계산에 필수적입니다."
+    },
+    {
+      "type": "list",
+      "items": [
+        {
+          "term": "`ROWS`",
+          "description": "프레임을 시작 및 종료 행의 '물리적인 위치'로 정의합니다. 예를 들어, `ROWS BETWEEN 1 PRECEDING AND CURRENT ROW`는 현재 행과 바로 이전 행을 포함한 2개 행을 프레임으로 정의합니다."
+        },
+        {
+          "term": "`RANGE`",
+          "description": "프레임을 현재 행의 '값'을 기준으로 한 '논리적인 범위' 내의 행들로 정의합니다. 예를 들어, `RANGE BETWEEN INTERVAL '2' DAY PRECEDING AND CURRENT ROW`는 현재 행의 날짜를 포함하여 이전 2일간의 모든 행을 프레임으로 정의합니다. 이 방식은 동일한 값을 가진 '피어(peer)' 행들을 자동으로 포함합니다."
+        },
+        {
+          "term": "프레임 끝점 지정",
+          "description": "`BETWEEN ... AND ...` 구문을 사용하여 프레임의 시작과 끝을 지정합니다."
+        }
+      ]
+    },
+    {
+      "type": "list",
+      "items": [
+        {
+          "term": "`UNBOUNDED PRECEDING`",
+          "description": "파티션의 첫 번째 행부터 시작합니다."
+        },
+        {
+          "term": "`UNBOUNDED FOLLOWING`",
+          "description": "파티션의 마지막 행까지 포함합니다."
+        },
+        {
+          "term": "`CURRENT ROW`",
+          "description": "`ROWS`에서는 현재 행 그 자체, `RANGE`에서는 현재 행과 동일한 값을 갖는 모든 행(피어)을 포함합니다."
+        },
+        {
+          "term": "`N PRECEDING` / `N FOLLOWING`",
+          "description": "현재 행으로부터 N개의 이전/이후 행을 포함합니다."
+        },
+        {
+          "term": "`INTERVAL 'N' unit PRECEDING` / `FOLLOWING`",
+          "description": "`RANGE`에서 시간/날짜 기반으로 프레임을 지정할 때 사용합니다. 예: `INTERVAL '2' DAY PRECEDING`."
+        }
+      ]
+    },
+    {
+      "type": "heading",
+      "level": 2,
+      "text": "윈도우 함수와 GROUP BY의 차이점"
+    },
+    {
+      "type": "paragraph",
+      "text": "`GROUP BY` 절과 윈도우 함수는 모두 데이터를 그룹화하고 집계 값을 계산할 수 있지만, 중요한 차이점이 있습니다."
+    },
+    {
+      "type": "list",
+      "items": [
+        "**행 수의 변화:** `GROUP BY`는 각 그룹에 대해 하나의 요약 행만을 반환하여 결과의 행 수를 줄입니다. 반면, 윈도우 함수는 원본 데이터의 행 수를 유지하면서 각 행에 계산된 집계 값을 추가합니다.",
+        "**집계 범위:** `GROUP BY`는 전체 그룹에 대한 집계를 수행하고, 개별 행 데이터는 사라집니다. 윈도우 함수는 각 행에 대해 '윈도우'라는 동적인 범위를 정의하고, 그 범위 내에서 계산을 수행하며, 원본 행의 세부 정보를 유지합니다."
+      ]
+    },
+    {
+      "type": "heading",
+      "level": 1,
+      "text": "데이터베이스 뷰 (Views)"
+    },
+    {
+      "type": "paragraph",
+      "text": "뷰는 특정 사용자의 관점에서 특정 데이터를 숨기거나, 복잡한 쿼리를 단순화하기 위한 메커니즘을 제공합니다. 뷰는 저장된 테이블(기본 테이블) 및 다른 뷰를 기반으로 정의된 가상 관계(virtual relation)입니다. 데이터베이스의 개념적 모델에는 속하지 않지만, 사용자에게는 실제 테이블처럼 보이는 '가상의 테이블'로 표시됩니다."
+    },
+    {
+      "type": "heading",
+      "level": 2,
+      "text": "뷰의 활용"
+    },
+    {
+      "type": "list",
+      "items": [
+        "**데이터 보안:** 특정 사용자에게 특정 컬럼이나 행만 보이도록 하여 민감한 데이터를 보호할 수 있습니다 (예: 강사의 급여 정보를 숨기는 뷰).",
+        "**쿼리 단순화:** 복잡한 JOIN이나 서브쿼리가 포함된 쿼리를 뷰로 정의하여, 사용자가 더 간단한 쿼리로 데이터에 접근하게 할 수 있습니다.",
+        "**데이터 일관성:** 자주 사용되는 복잡한 계산이나 조합을 뷰로 정의하여 모든 사용자가 동일한 방식으로 데이터에 접근하고 일관된 결과를 얻도록 합니다."
+      ]
+    },
+    {
+      "type": "heading",
+      "level": 2,
+      "text": "뷰의 종류: 가상 뷰 vs. 구체화된 뷰 (Materialized Views)"
+    },
+    {
+      "type": "list",
+      "items": [
+        {
+          "term": "가상 뷰 (Virtual View)",
+          "description": "가장 일반적인 형태의 뷰로, 데이터베이스에 물리적으로 저장되지 않습니다. 뷰를 쿼리할 때마다 정의된 쿼리 표현식이 실행되어 데이터를 동적으로 생성합니다. 따라서 항상 최신 데이터를 보여줍니다."
+        },
+        {
+          "term": "구체화된 뷰 (Materialized View)",
+          "description": "쿼리의 사전 계산된(구체화된) 결과가 물리적으로 저장되는 뷰입니다. 이는 단순 가상 뷰와 달리 테이블처럼 디스크에 저장됩니다. 응답 시간이 즉각적이어야 하거나, 기반 쿼리가 결과를 생성하는 데 너무 오래 걸릴 때 유용합니다. 하지만 주기적으로 '새로 고침(refresh)'하여 원본 데이터와의 동기화를 맞춰야 합니다. MySQL은 기본적으로 구체화된 뷰를 직접 지원하지 않습니다."
+        }
+      ]
+    },
+    {
+      "type": "heading",
+      "level": 2,
+      "text": "뷰를 통한 데이터 수정 (Update via a View)"
+    },
+    {
+      "type": "paragraph",
+      "text": "뷰를 통해 데이터를 삽입, 수정, 삭제하는 것은 가능하지만, 여러 제약 조건이 따릅니다. 모든 뷰가 업데이트 가능한 것은 아니며, SQL 구현마다 다소 차이가 있습니다. 일반적으로 '단순 뷰(Simple View)'만이 업데이트를 허용합니다."
+    },
+    {
+      "type": "list",
+      "items": [
+        "**단순 뷰 조건:**",
+        "FROM 절에 단 하나의 기본 테이블만 포함되어야 합니다.",
+        "SELECT 절에 표현식, 집계 함수, 또는 DISTINCT 지정이 없어야 합니다.",
+        "SELECT 절에 나열되지 않은 모든 속성은 NULL로 설정될 수 있거나 (NOT NULL 제약 조건이 없거나 기본값이 있어야 함).",
+        "쿼리에 GROUP BY 또는 HAVING 절이 없어야 합니다.",
+        "조인된 뷰나 집계 함수를 포함하는 뷰는 일반적으로 업데이트 불가능합니다. 예를 들어, 급여가 숨겨진 강사 뷰에 새 강사를 삽입하려 하면, 급여 값을 지정할 수 없어 문제가 발생할 수 있습니다."
+      ]
+    },
+    {
+      "type": "heading",
+      "level": 1,
+      "text": "데이터베이스 키 (Keys)"
+    },
+    {
+      "type": "paragraph",
+      "text": "관계형 데이터베이스에서 키는 관계(테이블) 내에서 데이터 튜플(행)을 고유하게 식별하고, 데이터 무결성을 유지하며, 관계 간의 연결(관계)을 설정하는 데 사용되는 속성 또는 속성 집합입니다."
+    },
+    {
+      "type": "heading",
+      "level": 2,
+      "text": "키의 종류"
+    },
+    {
+      "type": "list",
+      "items": [
+        {
+          "term": "슈퍼 키 (Super Key)",
+          "description": "관계에서 데이터 튜플을 고유하게 식별할 수 있는 모든 속성 또는 속성 집합입니다. 가장 넓은 의미의 키이며, 해당 속성(들)의 값이 고유하면 슈퍼 키가 됩니다. 예를 들어, {EmployeeID, Name}도 슈퍼 키가 될 수 있습니다."
+        },
+        {
+          "term": "후보 키 (Candidate Key)",
+          "description": "슈퍼 키의 최소 하위 집합입니다. 즉, 후보 키에서 어떤 속성이라도 제거하면 더 이상 튜플을 고유하게 식별할 수 없게 되는 최소한의 속성 집합입니다. 모든 후보 키는 고유성을 보장합니다."
+        },
+        {
+          "term": "기본 키 (Primary Key, PK)",
+          "description": "관계에서 데이터의 각 행을 고유하게 식별하기 위해 *선택된* 후보 키입니다. 테이블당 단 하나의 기본 키만 가질 수 있습니다. 기본 키는 어떤 두 행도 동일한 값을 가질 수 없으며, 값은 NULL일 수 없습니다 (NOT NULL 제약 조건). 이는 데이터 무결성의 핵심입니다."
+        },
+        {
+          "term": "대체 키 (Alternate Key)",
+          "description": "기본 키로 *선택되지 않은* 후보 키들을 의미합니다. 테이블에 여러 후보 키가 있을 수 있으며, 그 중 하나가 기본 키로 지정되면 나머지는 대체 키가 됩니다."
+        },
+        {
+          "term": "외래 키 (Foreign Key, FK)",
+          "description": "다른 관계(테이블)의 기본 키를 참조하여 두 테이블 간의 관계를 정의하는 데 사용되는 속성(들)입니다. 외래 키는 참조 무결성(Referential Integrity)을 유지하여 관계형 테이블 간의 데이터 일관성을 보장합니다."
+        },
+        {
+          "term": "복합 키 (Composite Key)",
+          "description": "둘 이상의 속성으로 구성된 모든 키(슈퍼 키, 후보 키, 기본 키 등)를 의미합니다. 예를 들어, 두 개의 컬럼을 조합해야만 유일한 값을 가지는 경우 복합 키가 됩니다."
+        },
+        {
+          "term": "화합 키 (Compound Key)",
+          "description": "하나 이상의 속성이 외래 키인 복합 키를 의미합니다. 이는 주로 다대다 관계를 해결하는 연결 테이블(junction table)에서 나타납니다."
+        },
+        {
+          "term": "대리 키 (Surrogate Key)",
+          "description": "관계에 자연스러운 기본 키가 없는 경우, 테이블 내에서 튜플을 고유하게 식별하기 위해 인위적으로 생성하는 속성입니다. 데이터 자체에는 의미가 없으며, 주로 자동 증가(auto increment) 기능을 가진 정수형 ID 컬럼으로 구현됩니다 (예: CustomerID, OrderID)."
+        }
+      ]
+    }
+  ],
+  "aiNotes": {
+    "summary": "본 강의 자료는 SQL의 핵심 고급 기능인 윈도우 함수, 데이터 관리 및 보안을 위한 뷰, 그리고 관계형 데이터베이스의 근간을 이루는 다양한 키 개념을 다룹니다. 윈도우 함수는 원본 행을 유지하며 복잡한 분석을 가능하게 하고, 뷰는 데이터 접근을 단순화하며 보안을 강화합니다. 키는 데이터의 고유성, 무결성, 그리고 테이블 간의 관계를 정의하는 데 필수적입니다.",
+    "keyConcepts": [
+      {
+        "term": "윈도우 함수 (Window Function)",
+        "definition": {
+          "easy": "놀이공원에서 줄 서 있는 친구들 중 나와 주변 몇 명만 골라 특별한 계산을 해주는 '마법 계산기'로, 원본 줄은 그대로 놔두고 계산 결과만 추가해줘요.",
+          "medium": "각 행마다 논리적으로 관련된 주변 행들(윈도우)에 대해 계산을 수행하며, GROUP BY와 달리 원본 행 수를 유지하는 SQL 함수입니다.",
+          "hard": "SQL:2003 표준에 도입된 함수로, `OVER` 절을 통해 정의된 윈도우(파티션 및 프레임) 내에서 집계, 순위, 값 함수 등을 수행하여 각 결과 행에 대한 맥락적 분석을 가능하게 합니다."
+        }
+      },
+      {
+        "term": "OVER 절 (OVER Clause)",
+        "definition": {
+          "easy": "윈도우 함수에서 '어떤 친구들과 함께 계산할지' (그룹, 정렬, 범위) 정하는 규칙서 같은 것이에요.",
+          "medium": "윈도우 함수의 동작 범위를 정의하는 절로, `PARTITION BY`, `ORDER BY`, `frame_clause`로 구성됩니다.",
+          "hard": "윈도우 함수가 적용될 행 집합(윈도우)의 논리적 분할(`PARTITION BY`), 정렬 순서(`ORDER BY`), 그리고 윈도우 내에서의 특정 범위(`frame_clause`)를 명시적으로 정의하는 SQL 절입니다."
+        }
+      },
+      {
+        "term": "PARTITION BY",
+        "definition": {
+          "easy": "전체 데이터를 '우리 반 친구들끼리만!' 처럼 그룹으로 나누는 것이에요.",
+          "medium": "데이터를 논리적 파티션으로 나누어 각 파티션 내에서 윈도우 함수가 독립적으로 계산을 수행하도록 합니다.",
+          "hard": "입력 릴레이션을 독립적 파티션으로 분할하여 윈도우 함수의 계산 범위를 제한하며, 각 파티션은 별도의 독립적인 처리 단위가 됩니다."
+        }
+      },
+      {
+        "term": "프레임 절 (Frame Clause)",
+        "definition": {
+          "easy": "파티션 안에서 '지금 나를 포함해서 어디부터 어디까지' 계산할지 범위를 정하는 규칙이에요.",
+          "medium": "`PARTITION BY`와 `ORDER BY`로 정의된 파티션 내에서 윈도우 함수가 실제로 연산을 수행할 행의 하위 집합(프레임)을 정의하는 절입니다.",
+          "hard": "윈도우 프레임을 `ROWS` (물리적 행 위치) 또는 `RANGE` (논리적 값 범위)를 기준으로 `BETWEEN` 구문과 `UNBOUNDED PRECEDING/FOLLOWING`, `CURRENT ROW`, `N PRECEDING/FOLLOWING`, `INTERVAL` 등의 키워드를 사용하여 정교하게 정의하는 구문입니다."
+        }
+      },
+      {
+        "term": "뷰 (View)",
+        "definition": {
+          "easy": "실제 테이블을 숨기고 필요한 부분만 보여주는 '가짜 테이블'이에요. 보안이나 복잡한 쿼리를 간단하게 만들 때 써요.",
+          "medium": "저장된 테이블이나 다른 뷰를 기반으로 정의된 가상 관계(virtual relation)로, 특정 사용자 관점에서 데이터를 숨기거나 쿼리 복잡성을 줄이는 메커니즘을 제공합니다.",
+          "hard": "데이터베이스 스키마에 정의되지만, 물리적으로 데이터를 저장하지 않고, 정의된 쿼리 표현식을 통해 동적으로 생성되는 가상 테이블 객체입니다. 데이터 보안, 쿼리 단순화, 그리고 데이터 일관성 유지에 활용됩니다."
+        }
+      },
+      {
+        "term": "기본 키 (Primary Key, PK)",
+        "definition": {
+          "easy": "테이블에서 각 줄(데이터)을 정확히 하나씩만 가리키는 '절대 중복되지 않는 이름표' 같은 것이에요. 빈칸일 수도 없어요!",
+          "medium": "테이블의 각 행을 고유하게 식별하기 위해 선택된 후보 키로, 중복 값을 가질 수 없으며 NULL 값을 허용하지 않습니다.",
+          "hard": "관계형 모델에서 릴레이션의 각 튜플을 고유하게 식별하기 위해 지정된 최소 슈퍼 키(후보 키) 중 하나로, `NOT NULL`과 `UNIQUE` 제약 조건을 필수적으로 만족해야 합니다."
+        }
+      },
+      {
+        "term": "외래 키 (Foreign Key, FK)",
+        "definition": {
+          "easy": "다른 테이블의 '이름표'를 빌려와서 우리 테이블과 그 테이블이 연결되어 있다는 걸 알려주는 '꼬리표' 같은 것이에요.",
+          "medium": "다른 테이블의 기본 키(또는 고유 키)를 참조하여 두 테이블 간의 관계를 정의하고 데이터 무결성을 유지하는 데 사용되는 속성입니다.",
+          "hard": "참조 무결성 제약 조건을 통해 한 릴레이션의 속성(또는 속성 집합)이 다른 릴레이션의 기본 키 또는 고유 키를 참조하도록 하는 키입니다. 이는 관계형 데이터베이스의 관계 설정 및 데이터 일관성 유지에 핵심적인 역할을 합니다."
+        }
+      }
+    ],
+    "importantTerms": [
+      {
+        "term": "SQL:2003",
+        "definition": "윈도우 함수가 처음 공식적으로 도입된 SQL 표준 버전입니다."
+      },
+      {
+        "term": "GROUP BY",
+        "definition": "데이터를 그룹화하여 각 그룹에 대해 하나의 요약 행을 반환하는 SQL 절입니다. 윈도우 함수와 달리 원본 행 수를 줄입니다."
+      },
+      {
+        "term": "RANK()",
+        "definition": "파티션 내에서 지정된 순서에 따라 순위를 부여하며, 동점자가 있을 경우 같은 순위를 부여하고 다음 순위는 동점자 수만큼 건너뜁니다 (예: 1, 2, 2, 4)."
+      },
+      {
+        "term": "DENSE_RANK()",
+        "definition": "파티션 내에서 지정된 순서에 따라 순위를 부여하며, 동점자가 있어도 다음 순위는 건너뛰지 않고 연속적으로 부여합니다 (예: 1, 2, 2, 3)."
+      },
+      {
+        "term": "ROW_NUMBER()",
+        "definition": "파티션 내에서 지정된 순서에 따라 동점자 여부와 관계없이 고유한 행 번호를 부여합니다 (예: 1, 2, 3, 4)."
+      },
+      {
+        "term": "LAG()",
+        "definition": "현재 행보다 이전 행의 값을 가져오는 함수입니다. 특정 오프셋을 지정하여 여러 칸 이전의 값을 가져올 수 있습니다."
+      },
+      {
+        "term": "LEAD()",
+        "definition": "현재 행보다 이후 행의 값을 가져오는 함수입니다. 특정 오프셋을 지정하여 여러 칸 이후의 값을 가져올 수 있습니다."
+      },
+      {
+        "term": "FIRST_VALUE()",
+        "definition": "현재 윈도우 프레임 내에서 첫 번째 행의 값을 반환하는 함수입니다."
+      },
+      {
+        "term": "LAST_VALUE()",
+        "definition": "현재 윈도우 프레임 내에서 마지막 행의 값을 반환하는 함수입니다."
+      },
+      {
+        "term": "CUME_DIST()",
+        "definition": "정렬된 파티션 내에서 현재 행의 누적 분포를 계산하는 함수입니다. (0 초과 ~ 1 이하의 값)"
+      },
+      {
+        "term": "PERCENT_RANK()",
+        "definition": "정렬된 파티션 내에서 현재 행의 백분위 순위를 계산하는 함수입니다. (0 이상 ~ 1 이하의 값)"
+      },
+      {
+        "term": "NTILE()",
+        "definition": "정렬된 파티션 내의 행들을 지정된 수의 그룹으로 나누고, 각 그룹에 대한 번호를 부여하는 함수입니다."
+      },
+      {
+        "term": "Materialized View",
+        "definition": "쿼리 결과가 물리적으로 저장되어 있는 뷰로, 성능 향상에 사용되지만 주기적인 새로 고침이 필요합니다."
+      },
+      {
+        "term": "Super Key",
+        "definition": "릴레이션에서 튜플을 고유하게 식별할 수 있는 모든 속성 또는 속성 집합입니다."
+      },
+      {
+        "term": "Candidate Key",
+        "definition": "슈퍼 키 중 최소성을 만족하는 속성 또는 속성 집합입니다. 기본 키가 될 수 있는 후보군입니다."
+      },
+      {
+        "term": "Alternate Key",
+        "definition": "기본 키로 선택되지 않은 후보 키들입니다."
+      },
+      {
+        "term": "Composite Key",
+        "definition": "둘 이상의 속성으로 구성된 키 (예: {EmployeeID, FileCD})."
+      },
+      {
+        "term": "Compound Key",
+        "definition": "하나 이상의 속성이 외래 키인 복합 키입니다."
+      },
+      {
+        "term": "Surrogate Key",
+        "definition": "테이블에 자연스러운 키가 없을 때 인위적으로 생성되는 고유 식별자 (예: 자동 증가 ID)."
+      }
+    ],
+    "outline": [
+      { "title": "윈도우 함수 개요", "id": "overview" },
+      { "title": "윈도우 함수 유형", "id": "window-function-types" },
+      { "title": "윈도우 함수 구문 (OVER 절)", "id": "over-clause" },
+      { "title": "프레임 절 (Frame Clause) 상세", "id": "frame-clause-details" },
+      { "title": "윈도우 함수와 GROUP BY의 차이점", "id": "window-vs-groupby" },
+      { "title": "데이터베이스 뷰 (Views)", "id": "database-views" },
+      { "title": "뷰의 활용", "id": "view-usage" },
+      { "title": "뷰의 종류: 가상 뷰 vs. 구체화된 뷰 (Materialized Views)", "id": "virtual-vs-materialized-views" },
+      { "title": "뷰를 통한 데이터 수정 (Update via a View)", "id": "update-via-view" },
+      { "title": "데이터베이스 키 (Keys)", "id": "database-keys" },
+      { "title": "키의 종류", "id": "types-of-keys" }
+    ]
+  },
+  "quiz": [
+    {
+      "question": "윈도우 함수에 대한 설명으로 가장 올바른 것은 무엇인가요?",
+      "options": [
+        "GROUP BY 절과 동일하게 데이터를 그룹화하고 그룹당 하나의 요약 행을 반환합니다.",
+        "각 행에 대해 관련된 행들의 집합(윈도우)을 기준으로 계산을 수행하며, 원본 행의 수를 유지합니다.",
+        "데이터를 삽입, 수정, 삭제하는 데 주로 사용되는 DML 함수입니다.",
+        "테이블의 물리적 구조를 변경하는 DDL 문에 해당합니다."
+      ],
+      "answerIndex": 1,
+      "explanation": "윈도우 함수는 GROUP BY와 달리 원본 행 수를 유지하면서 각 행에 계산 결과를 추가하는 방식으로 작동합니다. 이는 데이터 분석 시 세부 정보를 유지하면서 통계 정보를 볼 수 있게 합니다."
+    },
+    {
+      "question": "윈도우 함수의 `OVER` 절에 포함될 수 없는 구성 요소는 무엇인가요?",
+      "options": [
+        "PARTITION BY",
+        "ORDER BY",
+        "GROUP BY",
+        "frame_clause"
+      ],
+      "answerIndex": 2,
+      "explanation": "`GROUP BY`는 윈도우 함수와 독립적인 절이며, `OVER` 절 내에는 포함되지 않습니다. `OVER` 절은 `PARTITION BY`, `ORDER BY`, `frame_clause`로 구성됩니다."
+    },
+    {
+      "question": "다음 중 동점자가 있을 때 순위를 건너뛰는 함수는 무엇인가요? (예: 1등, 2등, 2등, 4등)",
+      "options": [
+        "DENSE_RANK()",
+        "ROW_NUMBER()",
+        "RANK()",
+        "NTILE()"
+      ],
+      "answerIndex": 2,
+      "explanation": "`RANK()`는 동점자에게 같은 순위를 부여하고 다음 순위는 건너뛰지만, `DENSE_RANK()`는 동점자가 있어도 순위를 건너뛰지 않고 연속적으로 부여합니다. `ROW_NUMBER()`는 동점자와 상관없이 고유한 행 번호를 부여합니다."
+    },
+    {
+      "question": "현재 행을 기준으로 이전 행의 값을 가져오는 윈도우 함수는 무엇인가요?",
+      "options": [
+        "LEAD()",
+        "FIRST_VALUE()",
+        "LAST_VALUE()",
+        "LAG()"
+      ],
+      "answerIndex": 3,
+      "explanation": "`LAG()`는 현재 행보다 이전 행의 값을 가져오고, `LEAD()`는 이후 행의 값을 가져옵니다."
+    },
+    {
+      "question": "윈도우 프레임 절 (`frame_clause`)에서 물리적인 행 위치를 기준으로 범위를 지정할 때 사용하는 키워드는 무엇인가요?",
+      "options": [
+        "RANGE",
+        "ROWS",
+        "INTERVAL",
+        "UNBOUNDED"
+      ],
+      "answerIndex": 1,
+      "explanation": "`ROWS`는 프레임을 물리적인 행 위치(예: 1 PRECEDING, CURRENT ROW)로 정의하고, `RANGE`는 논리적인 값의 범위(예: INTERVAL '2' DAY PRECEDING)로 정의합니다."
+    },
+    {
+      "question": "다음 프레임 절 중, 현재 행을 포함하여 파티션의 첫 번째 행부터 현재 행까지 모든 행을 포함하는 프레임을 나타내는 것은 무엇인가요?",
+      "options": [
+        "ROWS BETWEEN 1 PRECEDING AND 1 FOLLOWING",
+        "ROWS BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING",
+        "ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW",
+        "ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING"
+      ],
+      "answerIndex": 2,
+      "explanation": "`UNBOUNDED PRECEDING`은 파티션의 첫 번째 행을, `CURRENT ROW`는 현재 행을 의미하므로, 이 조합은 파티션 시작부터 현재 행까지의 범위를 정의합니다."
+    },
+    {
+      "question": "뷰(View)의 주요 목적 중 하나가 아닌 것은 무엇인가요?",
+      "options": [
+        "특정 사용자로부터 민감한 데이터를 숨기는 보안 메커니즘 제공",
+        "복잡한 쿼리를 단순화하여 사용자 편의성 증대",
+        "테이블의 물리적 저장 구조를 영구적으로 변경하여 성능 최적화",
+        "관계형 테이블 간 데이터 일관성 유지 및 쉬운 접근 제공"
+      ],
+      "answerIndex": 2,
+      "explanation": "뷰는 테이블의 물리적 저장 구조를 변경하지 않습니다. 뷰는 실제 데이터를 저장하지 않는 가상 테이블이며, 주로 데이터 보안, 쿼리 단순화, 데이터 일관성 유지를 목적으로 합니다."
+    },
+    {
+      "question": "가상 뷰(Virtual View)와 구체화된 뷰(Materialized View)의 가장 큰 차이점은 무엇인가요?",
+      "options": [
+        "가상 뷰는 업데이트가 가능하고, 구체화된 뷰는 불가능하다.",
+        "가상 뷰는 물리적으로 저장되지 않고 쿼리 시 동적으로 생성되지만, 구체화된 뷰는 물리적으로 저장된다.",
+        "가상 뷰는 데이터 보안에 사용되고, 구체화된 뷰는 쿼리 단순화에 사용된다.",
+        "가상 뷰는 MySQL에서 지원하지만, 구체화된 뷰는 MySQL에서 지원하지 않는다."
+      ],
+      "answerIndex": 1,
+      "explanation": "가상 뷰는 쿼리 시점에 데이터를 가져와 보여주는 반면, 구체화된 뷰는 쿼리 결과를 미리 계산하여 물리적으로 저장합니다. 이로 인해 성능 이점이 있지만, 데이터 새로 고침이 필요합니다."
+    },
+    {
+      "question": "다음 중 테이블의 기본 키(Primary Key)가 가져야 하는 특성은 무엇인가요?",
+      "options": [
+        "두 개 이상의 컬럼으로 구성될 수 있다.",
+        "NULL 값을 허용한다.",
+        "테이블 내에서 중복된 값을 가질 수 있다.",
+        "테이블당 여러 개가 존재할 수 있다."
+      ],
+      "answerIndex": 0,
+      "explanation": "기본 키는 두 개 이상의 컬럼으로 구성된 '복합 키'가 될 수 있습니다. 그러나 NULL 값을 허용하지 않으며(NOT NULL), 테이블 내에서 중복된 값을 가질 수 없고(UNIQUE), 테이블당 오직 하나만 존재해야 합니다."
+    },
+    {
+      "question": "릴레이션(테이블)에서 튜플(행)을 고유하게 식별할 수 있는 모든 속성 또는 속성 집합을 지칭하는 가장 넓은 개념의 키는 무엇인가요?",
+      "options": [
+        "기본 키 (Primary Key)",
+        "후보 키 (Candidate Key)",
+        "슈퍼 키 (Super Key)",
+        "외래 키 (Foreign Key)"
+      ],
+      "answerIndex": 2,
+      "explanation": "슈퍼 키는 튜플을 고유하게 식별할 수 있는 모든 속성 집합을 의미합니다. 후보 키는 슈퍼 키의 최소 하위 집합이며, 기본 키는 선택된 후보 키입니다. 외래 키는 다른 테이블을 참조하는 키입니다."
+    },
+    {
+      "question": "다른 테이블의 기본 키를 참조하여 두 테이블 간의 관계를 설정하고 데이터 무결성을 유지하는 데 사용되는 키는 무엇인가요?",
+      "options": [
+        "기본 키 (Primary Key)",
+        "대체 키 (Alternate Key)",
+        "슈퍼 키 (Super Key)",
+        "외래 키 (Foreign Key)"
+      ],
+      "answerIndex": 3,
+      "explanation": "외래 키(Foreign Key)는 다른 테이블의 기본 키(또는 고유 키)를 참조하여 관계를 정의하고 참조 무결성을 보장하는 역할을 합니다."
+    },
+    {
+      "question": "테이블에 자연스러운 기본 키가 없을 때, 데이터를 고유하게 식별하기 위해 인위적으로 생성하는 ID 컬럼을 무엇이라고 하나요?",
+      "options": [
+        "복합 키 (Composite Key)",
+        "화합 키 (Compound Key)",
+        "대리 키 (Surrogate Key)",
+        "대체 키 (Alternate Key)"
+      ],
+      "answerIndex": 2,
+      "explanation": "대리 키(Surrogate Key)는 데이터 자체에 의미는 없지만, 튜플을 고유하게 식별하기 위해 인위적으로 생성되는 속성입니다. 주로 자동 증가(auto increment) 기능을 사용하여 구현됩니다."
+    }
+  ]
+}
