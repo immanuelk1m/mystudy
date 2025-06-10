@@ -117,7 +117,7 @@ def _convert_llm_outline_to_model_outline(llm_item: LLMOutlineItem) -> models.Ou
         children = [_convert_llm_outline_to_model_outline(child) for child in llm_item.children]
     
     return models.OutlineItem(
-        title=llm_item.text, # Access as attribute
+        text=llm_item.text, # Access as attribute, map to 'text' in models.OutlineItem
         id=llm_item.id,       # Access as attribute
         children=children if children else None)
 
@@ -181,6 +181,16 @@ async def suggest_notebook_for_text(text_content: str, existing_notebook_titles:
     except Exception as e:
         print(f"Error suggesting notebook title with LLM: {e}")
         return None
+
+def _transform_llm_outline_item(item: Dict[str, Any]) -> None:
+    """Recursively transforms 'title' to 'text' in an LLM-generated outline item dictionary."""
+    if isinstance(item, dict): # Ensure item is a dict before processing
+        if 'title' in item:
+            item['text'] = item.pop('title')
+
+        if 'children' in item and isinstance(item['children'], list):
+            for child in item['children']:
+                _transform_llm_outline_item(child) # Recursive call
 
 # --- Full Chapter Generation from PDF Text ---
 
@@ -253,6 +263,16 @@ async def generate_content_for_chapter(chapter_title: str, chapter_text: str, or
             "format_instructions": parser.get_format_instructions()
         })
 
+        # Transform outline: 'title' to 'text' in generated_data before LLMGeneratedChapter parsing
+        if isinstance(generated_data, dict) and \
+           'ai_notes' in generated_data and \
+           isinstance(generated_data.get('ai_notes'), dict) and \
+           'outline' in generated_data['ai_notes'] and \
+           isinstance(generated_data['ai_notes'].get('outline'), list):
+
+            for outline_item_data in generated_data['ai_notes']['outline']:
+                _transform_llm_outline_item(outline_item_data) # Apply transformation in-place
+
         # Clean important_terms in generated_data before passing to LLMGeneratedChapter
         if 'ai_notes' in generated_data and 'important_terms' in generated_data['ai_notes']:
             raw_important_terms = generated_data['ai_notes'].get('important_terms', []) # Use .get for safety
@@ -283,6 +303,16 @@ async def generate_content_for_chapter(chapter_title: str, chapter_text: str, or
                          models.ImportantTerm(term=str(item), definition="Placeholder: Unexpected data type encountered.").dict()
                     )
             generated_data['ai_notes']['important_terms'] = cleaned_important_terms
+
+        # Transform document_content_blocks: join list of strings in 'content' field
+        if isinstance(generated_data, dict) and \
+           'document_content_blocks' in generated_data and \
+           isinstance(generated_data.get('document_content_blocks'), list):
+
+            for block in generated_data['document_content_blocks']:
+                if isinstance(block, dict) and 'content' in block and isinstance(block['content'], list):
+                    # Join list of strings into a single string, separated by newlines.
+                    block['content'] = '\n'.join(str(c) for c in block['content']) # Ensure all items are strings
 
         # The parser returns a dict. We can now build our DocumentContent from it.
         llm_chapter = LLMGeneratedChapter(**generated_data)
