@@ -1,5 +1,12 @@
 import os
+from dotenv import load_dotenv
+from pathlib import Path
 from typing import List, Dict, Any, Optional
+
+# .env 파일을 이 모듈의 최상단에서 로드하여, 임포트 순서에 관계없이
+# llm 객체 초기화 전에 환경 변수가 확실히 로드되도록 합니다.
+env_path = Path(__file__).parent / '.env'
+load_dotenv(dotenv_path=env_path)
 
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
@@ -10,9 +17,11 @@ from pydantic import BaseModel, Field as PydanticField, ValidationError # Update
 from pypdf import PdfReader
 from . import models # Assuming models.py is in the same directory or accessible
 
-# Initialize the Gemini LLM
-# It will automatically use GOOGLE_API_KEY from the environment
-llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash-preview-05-20", temperature=0.7, google_api_key=os.getenv("GOOGLE_API_KEY"))
+# Gemini LLM을 초기화합니다.
+# load_dotenv가 호출되었으므로, 라이브러리가 자동으로 환경에서 GOOGLE_API_KEY를 찾습니다.
+# langchain 라이브러리가 자동으로 키를 찾도록 명시적인 파라미터를 제거하고,
+# 모델 이름을 안정적인 최신 버전으로 업데이트합니다.
+llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash-latest", temperature=0.7)
 
 # --- PDF Processing ---
 def extract_text_from_pdf(pdf_file_path: str) -> str:
