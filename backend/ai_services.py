@@ -254,7 +254,7 @@ async def generate_content_for_chapter(chapter_title: str, chapter_text: str, or
                    "5. A quiz section containing a list of 2-3 multiple-choice questions designed to test understanding of the material. "
                    "   - Each quiz question must be an object strictly following this JSON structure: "
                    "     ```json\n"
-                   "     {\n"
+                   "     {{\n"
                    "       \"question\": \"여기에 한국어로 된 질문을 넣어주세요.\",\n"
                    "       \"options\": [\n"
                    "         \"한국어 옵션 1\",\n"
@@ -264,7 +264,7 @@ async def generate_content_for_chapter(chapter_title: str, chapter_text: str, or
                    "       ],\n"
                    "       \"answerIndex\": 0, // 0부터 시작하는 정수형 인덱스 (옵션 리스트 기준)\n"
                    "       \"explanation\": \"여기에 한국어로 된 정답 해설을 넣어주세요.\"\n"
-                   "     }\n"
+                   "     }}\n"
                    "     ```\n"
                    "   - `question` 필드는 명확하고 완전한 한국어 문장이어야 합니다.\n"
                    "   - `options` 필드는 최소 3개에서 최대 5개의 한국어 선택지를 포함하는 리스트여야 합니다.\n"
@@ -273,12 +273,12 @@ async def generate_content_for_chapter(chapter_title: str, chapter_text: str, or
                    "   - 모든 텍스트 필드(question, options, explanation)는 반드시 한국어로 작성되어야 합니다.\n"
                    "   - 예시 퀴즈 질문:\n"
                    "     ```json\n"
-                   "     {\n"
+                   "     {{\n"
                    "       \"question\": \"대한민국의 수도는 어디입니까?\",\n"
                    "       \"options\": [\"부산\", \"서울\", \"인천\", \"대구\"],\n"
                    "       \"answerIndex\": 1,\n"
                    "       \"explanation\": \"서울은 대한민국의 공식 수도입니다.\"\n"
-                   "     }\n"
+                   "     }}\n"
                    "     ```\n"
                    "Ensure your entire response is a single JSON object that strictly adheres to the Pydantic schema provided via {format_instructions}. "
                    "Pay close attention to the quiz structure and ensure all its elements are correctly formatted and in Korean."),
@@ -295,6 +295,12 @@ async def generate_content_for_chapter(chapter_title: str, chapter_text: str, or
             "original_pdf_filename": original_pdf_filename,
             "format_instructions": parser.get_format_instructions()
         })
+
+        # --- DEBUG: Log raw LLM output ---
+        import json
+        print("[DEBUG] Raw LLM Output for Quiz Generation:")
+        print(json.dumps(generated_data, indent=2, ensure_ascii=False))
+        # --- END DEBUG ---
 
         # Early exit if LLM output parsing failed or is not a dictionary
         if not isinstance(generated_data, dict):
