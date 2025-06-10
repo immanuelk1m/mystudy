@@ -152,13 +152,44 @@ def get_chapters_for_notebook(notebook_id: str) -> Optional[models.ChapterList]:
 
     return models.ChapterList(chapters=transformed_chapters)
 
+def _transform_outline_item(item: Dict[str, Any]) -> None:
+    """Recursively transforms 'title' to 'text' in an outline item and its children."""
+    if 'title' in item:
+        item['text'] = item.pop('title') # Rename 'title' to 'text'
+
+    if 'children' in item and isinstance(item['children'], list):
+        for child in item['children']:
+            if isinstance(child, dict):
+                _transform_outline_item(child) # Recursively call for children
+
 def get_document_content(notebook_id: str, chapter_number: str) -> Optional[models.DocumentContent]:
-    # Assuming chapter_number in path is 1-indexed as per frontend examples
-    # and matches the JSON file names (e.g., 1.json, 2.json)
     content_path = os.path.join(DATA_DIR, 'content', notebook_id, f'{chapter_number}.json')
     content_data = load_json(content_path)
+
     if content_data:
-        return models.DocumentContent(**content_data)
+        # Transform aiNotes.outline if it exists
+        if 'aiNotes' in content_data and isinstance(content_data['aiNotes'], dict) and \
+           'outline' in content_data['aiNotes'] and isinstance(content_data['aiNotes']['outline'], list):
+
+            for item in content_data['aiNotes']['outline']:
+                if isinstance(item, dict):
+                    _transform_outline_item(item) # Call the recursive transformation function
+
+        # Now, parse the (potentially modified) content_data
+        try:
+            return models.DocumentContent(**content_data)
+        except Exception as e: # Catch potential Pydantic validation errors or other issues post-transformation
+            print(f"Error parsing DocumentContent for notebook {notebook_id}, chapter {chapter_number} after outline transformation: {e}")
+            # Depending on policy, you might raise a custom error, return None, or let it propagate
+            # For now, let it propagate if it's a Pydantic error, or handle specific cases.
+            # If load_json can return None for other reasons than FileNotFoundError (e.g. permission),
+            # this part might still error. load_json seems to handle JSONDecodeError by returning None.
+            # Re-raising or returning None would be options.
+            # Given the error was a ValidationError, this try-except is good for debugging.
+            # For now, if transformation is correct, this should pass.
+            # If it still fails, the error will be logged by the calling router's try-except.
+            raise # Re-raise the exception if parsing fails after transformation.
+
     return None
 
 def get_file_structure(notebook_id: str, chapter_number: str) -> Optional[List[models.FileStructureItem]]:
