@@ -32,7 +32,7 @@ class ImportantTerm(BaseModel):
     definition: str
 
 class OutlineItem(BaseModel):
-    title: str
+    text: str # Changed from title
     id: str
     children: Optional[List['OutlineItem']] = None # Recursive
 
@@ -41,7 +41,7 @@ OutlineItem.update_forward_refs() # For recursive model
 class AINotes(BaseModel):
     summary: str
     keyConcepts: List[KeyConcept]
-    importantTerms: List[ImportantTerm]
+    importantTerms: List[Union[ImportantTerm, str]] # Changed line
     outline: List[OutlineItem]
 
 # For Quiz
