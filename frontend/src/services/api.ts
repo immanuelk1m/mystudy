@@ -129,7 +129,7 @@ export interface Notebook {
 export interface Chapter {
   id: number;
   title: string;
-  notebook_id: number;
+  notebook_id: string; // Changed to string
   // 예: chapter_number: number;
 }
 

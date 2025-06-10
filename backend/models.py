@@ -9,8 +9,13 @@ class Notebook(BaseModel):
     lastUpdated: datetime
     filesCount: int
 
+class Chapter(BaseModel):
+    id: int  # Chapter ID (e.g., index + 1)
+    title: str
+    notebook_id: str # To match Notebook.id type
+
 class ChapterList(BaseModel):
-    chapters: List[str]
+    chapters: List[Chapter] # Use the new Chapter model
 
 # For aiNotes
 class KeyConceptDefinition(BaseModel):
