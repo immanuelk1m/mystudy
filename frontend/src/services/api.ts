@@ -190,7 +190,7 @@ export const getChapters = async (notebookId: string): Promise<Chapter[]> => {
  * @param chapterId 챕터 ID
  */
 export const getChapterContent = async (notebookId: string, chapterId: string): Promise<ChapterContent> => {
-  const response = await fetch(`${API_BASE_URL}/notebooks/${notebookId}/content/${chapterId}`);
+  const response = await fetch(`${API_BASE_URL}/notebooks/${notebookId}/content?path=${chapterId}`);
   if (!response.ok) {
     throw new Error(`Failed to fetch content for chapter ${chapterId}`);
   }
@@ -203,7 +203,7 @@ export const getChapterContent = async (notebookId: string, chapterId: string): 
  * @param chapterId 챕터 ID
  */
 export const getChapterStructure = async (notebookId: string, chapterId: string): Promise<ChapterStructure> => {
-    const response = await fetch(`${API_BASE_URL}/notebooks/${notebookId}/structure/${chapterId}`);
+    const response = await fetch(`${API_BASE_URL}/notebooks/${notebookId}/structure?path=${chapterId}`);
     if (!response.ok) {
         throw new Error(`Failed to fetch structure for chapter ${chapterId}`);
     }
