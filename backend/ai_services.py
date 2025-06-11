@@ -205,11 +205,9 @@ class LLMDocumentContentBlock(BaseModel):
 
 class LLMQuizQuestion(BaseModel):
     question: str = PydanticField(..., description="The quiz question.")
-    type: str = PydanticField(..., description="Type of quiz question, e.g., 'multiple_choice', 'short_answer'.")
-    options: Optional[List[str]] = PydanticField(None, description="A list of 2-4 multiple choice options, if type is 'multiple_choice'.")
-    answer_index: Optional[int] = PydanticField(None, description="The 0-based index of the correct option, if type is 'multiple_choice'.")
-    answer: Optional[str] = PydanticField(None, description="The correct answer text, if type is 'short_answer'.")
-    explanation: Optional[str] = PydanticField(None, description="A brief explanation for the correct answer.")
+    options: List[str] = PydanticField(..., description="A list of 2-4 multiple choice options.")
+    answer_index: int = PydanticField(..., alias="answerIndex", description="The 0-based index of the correct option.")
+    explanation: str = PydanticField(..., description="A brief explanation for the correct answer.")
 
 class LLMMetadata(BaseModel):
     source_pdf: str = PydanticField(..., description="The original PDF filename provided by the LLM.")
@@ -432,7 +430,7 @@ async def generate_content_for_chapter(chapter_title: str, chapter_text: str, or
         quiz_items = [models.QuizQuestion(
             question=q.question,
             options=q.options,
-            answer=q.options[q.answer_index] if q.options and q.answer_index is not None else q.answer,
+            answerIndex=q.answer_index,
             explanation=q.explanation
         ) for q in llm_chapter.quiz]
         

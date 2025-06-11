@@ -1,0 +1,604 @@
+{
+  "title": "생산자 문제와 공급 곡선",
+  "metadata": "Source: 458aacf1-fc8b-453e-8ffd-1aeed6c3c5a3_e43f9b7f-f4be-4671-8e7e-bf0855a1cc12_4 Firm optimal choice and supply curve.pdf, Text length: 7000 chars",
+  "documentContent": [
+    {
+      "type": "heading",
+      "content": "강의 3: 생산자 문제와 공급 곡선",
+      "level": 1
+    },
+    {
+      "type": "paragraph",
+      "content": "Jengei Hong",
+      "level": null
+    },
+    {
+      "type": "heading",
+      "content": "시장 경제 시스템",
+      "level": 2
+    },
+    {
+      "type": "paragraph",
+      "content": "시장 경제 시스템 내에서 다양한 기업(Firm1-Firm5)들이 상품 및 서비스 시장과 생산 요소 시장을 통해 상호작용합니다. 이 강의는 개별 기업이 어떻게 의사결정을 내리는지에 초점을 맞춥니다.",
+      "level": null
+    },
+    {
+      "type": "heading",
+      "content": "주요 용어",
+      "level": 2
+    },
+    {
+      "type": "paragraph",
+      "content": "생산자의 최적 의사결정, 생산 비용, 고정 비용과 변동 비용, 평균 비용과 한계 비용, 생산 함수, 한계 생산 체감의 법칙, 총수입, 평균 수입, 한계 수입.",
+      "level": null
+    },
+    {
+      "type": "heading",
+      "content": "생산자의 최적화 문제",
+      "level": 2
+    },
+    {
+      "type": "paragraph",
+      "content": "기업 또는 사업 부문은 노동, 자본, 토지, 원자재 또는 완제품 구성 요소와 같은 투입물을 결합하여 산출물을 생산합니다. 이러한 생산 활동은 제조뿐만 아니라 운송, 유통, 도매 및 소매 판매를 포함하여 가치를 창출하는 모든 과정이나 서비스를 포함합니다.",
+      "level": null
+    },
+    {
+      "type": "paragraph",
+      "content": "기업의 목표는 이윤 극대화입니다.",
+      "level": null
+    },
+    {
+      "type": "heading",
+      "content": "이윤, 수입 및 비용",
+      "level": 3
+    },
+    {
+      "type": "paragraph",
+      "content": "이윤 = 수입 – 비용",
+      "level": null
+    },
+    {
+      "type": "paragraph",
+      "content": "수입 = 가격 × 수량",
+      "level": null
+    },
+    {
+      "type": "paragraph",
+      "content": "비용 = 기업이 제품을 만들고 판매하기 위해 지불하는 금액을 총비용이라고 합니다.",
+      "level": null
+    },
+    {
+      "type": "paragraph",
+      "content": "기업의 비용 구조는 몇 가지 공통적인 기본 패턴으로 나눌 수 있습니다. 단기적으로 비용을 고정 비용과 변동 비용으로 분류할 수 있습니다.",
+      "level": null
+    },
+    {
+      "type": "paragraph",
+      "content": "고정 비용은 단기적으로 변경할 수 없는 비용입니다.",
+      "level": null
+    },
+    {
+      "type": "paragraph",
+      "content": "변동 비용은 변경할 수 있는 비용입니다.",
+      "level": null
+    },
+    {
+      "type": "heading",
+      "content": "생산 비용의 구조",
+      "level": 2
+    },
+    {
+      "type": "paragraph",
+      "content": "고정 비용은 생산 수준에 관계없이, 적어도 단기적으로는 변하지 않는 지출입니다. 예를 들어, 공장 건설 비용이나 중장비 구매 비용, 연구 개발 비용, 광고 비용 등이 있습니다. 고정 비용의 수준은 제품이나 산업의 특성에 따라 다릅니다. 예를 들어, 휴대폰이나 컴퓨터 칩을 제조하려면 비싼 공장이 필요하지만, 푸드 트럭이나 화가는 상대적으로 적은 고정 비용으로 운영할 수 있습니다.",
+      "level": null
+    },
+    {
+      "type": "paragraph",
+      "content": "변동 비용은 생산 활동에서 발생하는 비용입니다. 예를 들어, 임금과 중간재 구매 비용은 변동 비용입니다. 더 많이 생산할수록 변동 비용은 더 커집니다.",
+      "level": null
+    },
+    {
+      "type": "paragraph",
+      "content": "총비용 = 고정 비용 + 변동 비용.",
+      "level": null
+    },
+    {
+      "type": "heading",
+      "content": "생산의 본질",
+      "level": 2
+    },
+    {
+      "type": "paragraph",
+      "content": "두 가지 가정:",
+      "level": null
+    },
+    {
+      "type": "paragraph",
+      "content": "1. 양성 (투입물에 대한 양의 관계)",
+      "level": null
+    },
+    {
+      "type": "paragraph",
+      "content": "2. 한계 생산 체감의 법칙",
+      "level": null
+    },
+    {
+      "type": "paragraph",
+      "content": "어떤 투입물의 한계 생산물: 해당 투입물 한 단위 추가로 얻는 산출물의 추가 수량.",
+      "level": null
+    },
+    {
+      "type": "heading",
+      "content": "예시: 페페의 치킨집",
+      "level": 2
+    },
+    {
+      "type": "paragraph",
+      "content": "치킨집 운영의 고정 비용(공간 및 장비 포함)은 100이라고 가정합니다. 변동 비용은 직원을 고용하는 비용이며, 이 예시에서는 배달원 한 명당 50입니다. 변동 비용 = 투입물 가격 × 투입물 수량. 투입물(직원) 한 단위를 추가하면 비용은 투입물 가격(임금 50)만큼 증가합니다.",
+      "level": null
+    },
+    {
+      "type": "heading",
+      "content": "페페의 치킨집 비용 구조 및 수익 예시",
+      "level": 3
+    },
+    {
+      "type": "paragraph",
+      "content": "노동 투입량에 따른 생산량, 총수입, 추가 수입, 고정 비용, 변동 비용, 총비용, 추가 비용을 보여주는 표가 제시됩니다. 치킨 한 마리당 가격은 30으로 가정됩니다. 노동 투입이 증가할수록 생산량은 증가하지만, 추가 노동자 한 명당 생산량 증가분은 점차 줄어들어 한계 생산 체감의 법칙을 보여줍니다.",
+      "level": null
+    },
+    {
+      "type": "heading",
+      "content": "최적의 선택은 무엇인가?",
+      "level": 3
+    },
+    {
+      "type": "paragraph",
+      "content": "추가 노동자 한 명당 발생하는 추가 비용(한계 비용)은 50으로 일정하지만, 추가 노동자 한 명당 발생하는 추가 수입(한계 수입)은 생산량이 증가함에 따라 감소합니다. 이윤 극대화는 한계 수입(MR)과 한계 비용(MC)이 같아지는 지점에서 발생합니다.",
+      "level": null
+    },
+    {
+      "type": "heading",
+      "content": "생산 함수",
+      "level": 2
+    },
+    {
+      "type": "paragraph",
+      "content": "생산 비용에 대해 생산 테이블을 사용하여 논의했습니다. 이제 생산 테이블 대신 생산 함수를 사용할 수 있습니다. 그리고 생산 함수로부터 각 비용 함수를 도출할 수 있습니다.",
+      "level": null
+    },
+    {
+      "type": "paragraph",
+      "content": "효용 함수와 마찬가지로 생산 함수의 형태는 일반적으로 가정됩니다. 이 경우, 한계 생산 체감 패턴을 가진 생산 함수를 가정합니다. 왜냐하면 이 형태는 경제학자들이 일반적으로 사용하는 생산 함수의 기본 형태 중 하나이기 때문입니다.",
+      "level": null
+    },
+    {
+      "type": "heading",
+      "content": "수학적 준비",
+      "level": 2
+    },
+    {
+      "type": "heading",
+      "content": "함수",
+      "level": 3
+    },
+    {
+      "type": "paragraph",
+      "content": "함수는 X와 Y 사이의 특별한 관계 유형입니다. X의 모든 요소를 Y의 정확히 하나의 요소에 투영합니다. 표기법: y = F(x). 예시: y = x + 10, y = 2x^α. 함수를 그리는 것은 함수의 특성을 스케치하는 데 도움이 됩니다. (α가 0 < α < 1일 때와 α > 1일 때의 y 특징을 설명합니다.) 일반적으로 수평(수직) 축은 투입(산출) 변수를 나타냅니다.",
+      "level": null
+    },
+    {
+      "type": "heading",
+      "content": "미분 개념",
+      "level": 3
+    },
+    {
+      "type": "paragraph",
+      "content": "x의 변화에 대한 y의 변화의 반응성을 확인합니다. 함수의 기울기 의미. 미분과 도함수 함수. 표기법: dy/dx, dF(x)/dx, F'(x).",
+      "level": null
+    },
+    {
+      "type": "heading",
+      "content": "미분 공식",
+      "level": 3
+    },
+    {
+      "type": "paragraph",
+      "content": "상수의 미분: dA/dx = 0",
+      "level": null
+    },
+    {
+      "type": "paragraph",
+      "content": "멱함수의 미분: d(Ax^α)/dx = αAx^(α-1)",
+      "level": null
+    },
+    {
+      "type": "paragraph",
+      "content": "합의 미분: d(F(x) + Z(x))/dx = dF(x)/dx + dZ(x)/dx",
+      "level": null
+    },
+    {
+      "type": "heading",
+      "content": "예시 2: 생산 함수",
+      "level": 2
+    },
+    {
+      "type": "paragraph",
+      "content": "페페의 치킨집 생산 함수의 형태를 Q = 10X^(1/2)로 가정합니다. 여기서 Q는 산출량이고 X는 투입량(고용 인원)입니다.",
+      "level": null
+    },
+    {
+      "type": "heading",
+      "content": "생산자의 최적화 문제 (재검토)",
+      "level": 2
+    },
+    {
+      "type": "paragraph",
+      "content": "이윤 = 수입 – 비용임을 상기합니다. 이제 비용과 수입을 함수로 설명합니다. 생산 비용 및 생산의 한계 비용, 수입 및 한계 수입.",
+      "level": null
+    },
+    {
+      "type": "heading",
+      "content": "생산 비용 함수 정리",
+      "level": 3
+    },
+    {
+      "type": "paragraph",
+      "content": "생산 비용(생산량에 대한): 해당 수량을 생산하는 데 지불된 비용. 총비용 = 고정 비용 + 변동 비용(=투입물 가격 * 투입물). 생산 비용 = 고정 비용 + 투입물 가격 * 해당 제품을 생산하는 데 필요한 투입물.",
+      "level": null
+    },
+    {
+      "type": "heading",
+      "content": "예시 2: 생산 비용 함수 및 한계 비용",
+      "level": 3
+    },
+    {
+      "type": "paragraph",
+      "content": "예시에서 Q = 10X^(1/2)이므로 X = Q^2/100입니다. 생산 비용(Q를 생산하는 데 드는) = 100 + 50 * (Q^2/100)입니다. 한계 비용은 Q에 대한 생산 비용의 도함수이므로 MC = Q입니다.",
+      "level": null
+    },
+    {
+      "type": "heading",
+      "content": "수입과 한계 수입",
+      "level": 3
+    },
+    {
+      "type": "paragraph",
+      "content": "수입 = 가격 × 수량. 한계 수입: 제품 한 단위를 더 생산하고 판매함으로써 얻는 추가 수입 = 가격. 이를 해결하려면 가격의 성격을 가정해야 합니다. 간단하게, 가격은 10으로 고정되어 있다고 가정합니다. 이 경우 한계 수입은 10입니다.",
+      "level": null
+    },
+    {
+      "type": "heading",
+      "content": "생산자의 최적화 문제: 이윤 극대화",
+      "level": 2
+    },
+    {
+      "type": "paragraph",
+      "content": "이윤 극대화 규칙: 한계 수입 = 한계 비용. 예시에서 한계 수입 = 10이고 한계 비용 = Q입니다. 따라서 MR=MC는 Q = 10을 의미합니다. 그러므로 최적 생산량은 10입니다.",
+      "level": null
+    },
+    {
+      "type": "heading",
+      "content": "산출량과 비용의 관계",
+      "level": 2
+    },
+    {
+      "type": "paragraph",
+      "content": "생산 과정에서 한계 생산물이 체감합니다. 따라서 투입물 한 단위 추가에 대한 산출량 변화량은 감소합니다. 이는 산출물 한 단위를 추가로 생산하는 데 필요한 추가 투입량은 증가한다는 것과 같습니다. 이는 산출물 한 단위를 더 생산하는 데 드는 비용이 증가한다는 것을 의미합니다.",
+      "level": null
+    },
+    {
+      "type": "heading",
+      "content": "생산 비용의 구조: 4가지 비용 개념",
+      "level": 2
+    },
+    {
+      "type": "paragraph",
+      "content": "평균 총비용, 평균 고정 비용, 평균 변동 비용, 한계 비용.",
+      "level": null
+    },
+    {
+      "type": "heading",
+      "content": "평균 고정 비용 (AFC)",
+      "level": 3
+    },
+    {
+      "type": "paragraph",
+      "content": "평균 고정 비용(AFC)은 고정 비용을 산출량으로 나눈 것입니다. AFC = 고정 비용 / 산출량. 산출량이 증가할수록 AFC는 지속적으로 감소하는 형태를 가집니다.",
+      "level": null
+    },
+    {
+      "type": "heading",
+      "content": "평균 변동 비용 (AVC)",
+      "level": 3
+    },
+    {
+      "type": "paragraph",
+      "content": "평균 변동 비용(AVC)은 총 변동 비용을 산출량으로 나눈 것입니다. AVC = 총 변동 비용 / 산출량. AVC는 처음에는 감소하다가 어느 시점부터 증가하는 U자 형태를 가집니다.",
+      "level": null
+    },
+    {
+      "type": "heading",
+      "content": "평균 총비용 (ATC)",
+      "level": 3
+    },
+    {
+      "type": "paragraph",
+      "content": "평균 총비용(ATC)은 총비용을 산출량으로 나눈 것입니다. ATC = 총비용 / 산출량 = (고정 비용 + 변동 비용) / 산출량. ATC 또한 U자 형태를 가집니다.",
+      "level": null
+    },
+    {
+      "type": "heading",
+      "content": "한계 비용 (MC)",
+      "level": 3
+    },
+    {
+      "type": "paragraph",
+      "content": "한계 비용(MC)은 산출물 한 단위를 더 생산하는 데 드는 추가 비용입니다. MC = 총비용 변화량 / 산출량 변화량. 예를 들어, 생산량이 10마리에서 18마리 치킨으로 증가할 때 총비용은 50 증가합니다 (따라서 치킨 한 마리당 한계 비용은 50/8이 됩니다). MC 곡선은 일반적으로 우상향하는 형태를 가집니다.",
+      "level": null
+    },
+    {
+      "type": "heading",
+      "content": "ATC와 MC의 관계",
+      "level": 3
+    },
+    {
+      "type": "paragraph",
+      "content": "100m 달리기 선수가 자신의 기록을 세고 있다고 가정해 봅시다. 10개 기록의 평균이 10초였고, 11번째 기록이 9초였다고 가정해 봅시다. 그의 평균 기록은 어떻게 바뀔까요? 약간 내려갈 것입니다. 하지만 11번째 기록이 이전 평균보다 큰 11초였다면, 추가 기록을 포함한 평균 기록은 올라갈 것입니다.",
+      "level": null
+    },
+    {
+      "type": "paragraph",
+      "content": "ATC는 평균 기록과 유사한 개념이며, MC는 11번째 새 기록과 유사한 개념입니다. 평균 총비용은 한계 비용이 평균 총비용보다 크면 증가하고, 작으면 감소합니다. 결과적으로 MC 곡선은 ATC 곡선의 최저점을 통과하여 올라갑니다.",
+      "level": null
+    },
+    {
+      "type": "heading",
+      "content": "연습 문제",
+      "level": 2
+    },
+    {
+      "type": "paragraph",
+      "content": "생산 함수의 형태를 Q = 2X^(1/2)로 가정합니다. 여기서 Q는 산출량이고 X는 투입량입니다. 고정 비용은 100이고, 각 투입물(변동 비용)의 가격은 10이라고 가정합니다.",
+      "level": null
+    },
+    {
+      "type": "paragraph",
+      "content": "1. 투입량에 대한 총비용 함수를 도출하시오.",
+      "level": null
+    },
+    {
+      "type": "paragraph",
+      "content": "2. 산출량에 대한 총비용 함수를 도출하시오.",
+      "level": null
+    },
+    {
+      "type": "paragraph",
+      "content": "3. 평균 고정 비용 방정식을 도출하시오.",
+      "level": null
+    },
+    {
+      "type": "paragraph",
+      "content": "4. 평균 변동 비용 방정식을 도출하시오.",
+      "level": null
+    },
+    {
+      "type": "paragraph",
+      "content": "5. 평균 총비용 방정식을 도출하시오.",
+      "level": null
+    },
+    {
+      "type": "paragraph",
+      "content": "6. 산출량에 대한 한계 비용 방정식을 도출하시오.",
+      "level": null
+    }
+  ],
+  "aiNotes": {
+    "summary": "본 문서는 생산자의 최적화 문제와 공급 곡선에 대해 설명합니다. 기업의 목표인 이윤 극대화를 달성하기 위해 수익과 비용의 개념을 정의하고, 특히 고정 비용, 변동 비용, 총비용, 평균 비용, 한계 비용 등 다양한 비용 구조를 상세히 다룹니다. 또한 한계 생산 체감의 법칙을 포함한 생산의 본질을 설명하고, 생산 함수를 활용하여 비용 함수와 한계 비용을 도출하는 방법을 예시를 통해 제시합니다. 이윤 극대화 조건인 한계 수입(MR)과 한계 비용(MC)이 같아지는 지점을 찾는 것이 중요하며, ATC와 MC 곡선 간의 관계도 다룹니다.",
+    "keyConcepts": [
+      {
+        "term": "생산자 최적화 문제",
+        "definition": "기업이 주어진 자원과 기술을 활용하여 이윤을 극대화하는 생산량과 투입량 조합을 결정하는 문제."
+      },
+      {
+        "term": "생산 비용 구조",
+        "definition": {
+          "medium": "기업이 생산 활동을 수행하는 데 발생하는 비용을 고정 비용(단기적으로 변하지 않는 비용)과 변동 비용(생산량에 따라 변하는 비용)으로 분류하고, 이들의 합이 총비용을 이룹니다. 이외에 평균 비용(단위당 비용)과 한계 비용(추가 한 단위 생산에 드는 비용)이 있습니다."
+        }
+      },
+      {
+        "term": "한계 생산 체감의 법칙",
+        "definition": "다른 생산 요소의 투입량을 고정시킨 채 특정 생산 요소의 투입량을 계속 늘릴 때, 한계 생산물(추가 투입량당 산출량 증가분)이 점차 감소하는 현상."
+      },
+      {
+        "term": "이윤 극대화 조건",
+        "definition": "기업이 이윤을 극대화하기 위한 생산량은 한계 수입(Marginal Revenue)과 한계 비용(Marginal Cost)이 같아지는 지점에서 결정됩니다. (MR = MC)"
+      }
+    ],
+    "importantTerms": [
+      {
+        "term": "고정 비용 (Fixed Cost)",
+        "definition": "생산량 수준에 관계없이 단기적으로 변하지 않는 비용."
+      },
+      {
+        "term": "변동 비용 (Variable Cost)",
+        "definition": "생산량 수준에 따라 변하는 비용."
+      },
+      {
+        "term": "한계 생산물 (Marginal Product)",
+        "definition": "어떤 투입물 한 단위를 추가했을 때 얻어지는 산출물의 추가 수량."
+      },
+      {
+        "term": "한계 비용 (Marginal Cost)",
+        "definition": "산출물 한 단위를 더 생산하는 데 드는 추가 비용."
+      },
+      {
+        "term": "한계 수입 (Marginal Revenue)",
+        "definition": "제품 한 단위를 더 생산하고 판매함으로써 얻는 추가 수입."
+      },
+      {
+        "term": "평균 총비용 (Average Total Cost, ATC)",
+        "definition": "총비용을 총 산출량으로 나눈 단위당 비용."
+      },
+      {
+        "term": "생산 함수 (Production Function)",
+        "definition": "주어진 투입물(노동, 자본 등)의 양으로부터 생산할 수 있는 최대 산출량을 보여주는 수학적 관계."
+      }
+    ],
+    "outline": [
+      {
+        "text": "강의 3: 생산자 문제와 공급 곡선",
+        "id": "lecture-3-producer-problem-and-supply-curve"
+      },
+      {
+        "text": "시장 경제 시스템",
+        "id": "market-economy-system"
+      },
+      {
+        "text": "주요 용어",
+        "id": "keywords"
+      },
+      {
+        "text": "생산자의 최적화 문제",
+        "id": "producer-optimization-problem"
+      },
+      {
+        "text": "이윤, 수입 및 비용",
+        "id": "profit-revenue-cost"
+      },
+      {
+        "text": "생산 비용의 구조",
+        "id": "structure-of-production-cost"
+      },
+      {
+        "text": "생산의 본질",
+        "id": "nature-of-production"
+      },
+      {
+        "text": "예시: 페페의 치킨집",
+        "id": "example-pepes-chicken-house"
+      },
+      {
+        "text": "페페의 치킨집 비용 구조 및 수익 예시",
+        "id": "pepes-chicken-house-cost-revenue-example"
+      },
+      {
+        "text": "최적의 선택은 무엇인가?",
+        "id": "what-is-the-optimal-choice"
+      },
+      {
+        "text": "생산 함수",
+        "id": "production-function"
+      },
+      {
+        "text": "수학적 준비",
+        "id": "mathematical-preparations",
+        "children": [
+          {
+            "text": "함수",
+            "id": "function"
+          },
+          {
+            "text": "미분 개념",
+            "id": "concept-of-differentiation"
+          },
+          {
+            "text": "미분 공식",
+            "id": "formulas-for-differentiation"
+          }
+        ]
+      },
+      {
+        "text": "예시 2: 생산 함수",
+        "id": "example-2-production-function"
+      },
+      {
+        "text": "생산자의 최적화 문제 (재검토)",
+        "id": "producer-optimization-problem-revisited"
+      },
+      {
+        "text": "생산 비용 함수 정리",
+        "id": "arrangement-for-production-cost-function"
+      },
+      {
+        "text": "예시 2: 생산 비용 함수 및 한계 비용",
+        "id": "example-2-production-cost-function-and-marginal-cost"
+      },
+      {
+        "text": "수입과 한계 수입",
+        "id": "revenue-and-marginal-revenue"
+      },
+      {
+        "text": "생산자의 최적화 문제: 이윤 극대화",
+        "id": "producer-optimization-problem-profit-maximization"
+      },
+      {
+        "text": "산출량과 비용의 관계",
+        "id": "relationship-between-output-and-cost"
+      },
+      {
+        "text": "생산 비용의 구조: 4가지 비용 개념",
+        "id": "structure-of-production-cost-4-concepts"
+      },
+      {
+        "text": "평균 고정 비용 (AFC)",
+        "id": "average-fixed-cost-afc"
+      },
+      {
+        "text": "평균 변동 비용 (AVC)",
+        "id": "average-variable-cost-avc"
+      },
+      {
+        "text": "평균 총비용 (ATC)",
+        "id": "average-total-cost-atc"
+      },
+      {
+        "text": "한계 비용 (MC)",
+        "id": "marginal-cost-mc"
+      },
+      {
+        "text": "ATC와 MC의 관계",
+        "id": "relationship-between-atc-and-mc"
+      },
+      {
+        "text": "연습 문제",
+        "id": "practice-problems"
+      }
+    ]
+  },
+  "quiz": [
+    {
+      "question": "본문에서 언급된 기업의 주요 목표는 무엇입니까?",
+      "options": [
+        "시장 점유율 확대",
+        "이윤 극대화",
+        "직원 복지 증진",
+        "사회적 책임 이행"
+      ],
+      "answerIndex": 1,
+      "explanation": "본문은 기업의 목표가 '이윤(profit)'이라고 명시하며, 생산자의 최적화 문제의 핵심이 이윤 극대화임을 강조합니다."
+    },
+    {
+      "question": "단기적으로 생산량 수준에 관계없이 변하지 않는 비용을 무엇이라고 합니까?",
+      "options": [
+        "변동 비용",
+        "한계 비용",
+        "고정 비용",
+        "평균 비용"
+      ],
+      "answerIndex": 2,
+      "explanation": "고정 비용은 '생산 수준에 관계없이, 적어도 단기적으로는 변하지 않는 지출'이라고 정의됩니다."
+    },
+    {
+      "question": "생산자가 이윤을 극대화하기 위한 최적의 생산량 결정 조건은 무엇입니까?",
+      "options": [
+        "총수입이 최대가 되는 지점",
+        "평균 총비용이 최소가 되는 지점",
+        "한계 수입과 한계 비용이 같아지는 지점",
+        "고정 비용이 최소가 되는 지점"
+      ],
+      "answerIndex": 2,
+      "explanation": "본문은 '이윤 극대화 규칙: 한계 수입 = 한계 비용'이라고 명확히 제시합니다."
+    }
+  ]
+}
