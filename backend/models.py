@@ -1,21 +1,95 @@
 from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any, Union
 from datetime import datetime
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, JSON
+from sqlalchemy.orm import relationship
+from .database import Base
 
-class Notebook(BaseModel):
-    id: str
+class Notebook(Base):
+    __tablename__ = "notebooks"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    title = Column(String)
+    description = Column(String)
+    lastUpdated = Column(DateTime)
+    filesCount = Column(Integer)
+
+    chapters = relationship("Chapter", back_populates="notebook")
+
+class Chapter(Base):
+    __tablename__ = "chapters"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    title = Column(String)
+    order = Column(Integer)
+    notebook_id = Column(Integer, ForeignKey("notebooks.id"))
+
+    notebook = relationship("Notebook", back_populates="chapters")
+    files = relationship("File", back_populates="chapter")
+    contents = relationship("Content", back_populates="chapter")
+
+class File(Base):
+    __tablename__ = "files"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    name = Column(String)
+    path = Column(String)
+    type = Column(String)
+    chapter_id = Column(Integer, ForeignKey("chapters.id"))
+
+    chapter = relationship("Chapter", back_populates="files")
+
+
+class Content(Base):
+    __tablename__ = "contents"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    data = Column(JSON)
+    chapter_id = Column(Integer, ForeignKey("chapters.id"))
+
+    chapter = relationship("Chapter", back_populates="contents")
+
+
+# Pydantic schema for Notebook
+class ContentSchema(BaseModel):
+    id: int
+    data: Dict[str, Any]
+
+    class Config:
+        from_attributes = True
+
+class FileSchema(BaseModel):
+    id: int
+    name: str
+    path: str
+    type: str
+
+    class Config:
+        from_attributes = True
+
+class ChapterSchema(BaseModel):
+    id: int
+    title: str
+    order: int
+    files: List[FileSchema] = []
+    contents: List[ContentSchema] = []
+
+    class Config:
+        from_attributes = True
+
+class NotebookSchema(BaseModel):
+    id: int
     title: str
     description: str
     lastUpdated: datetime
     filesCount: int
+    chapters: List[ChapterSchema] = []
 
-class Chapter(BaseModel):
-    id: int  # Chapter ID (e.g., index + 1)
-    title: str
-    notebook_id: str # To match Notebook.id type
+    class Config:
+        from_attributes = True
 
 class ChapterList(BaseModel):
-    chapters: List[Chapter] # Use the new Chapter model
+    chapters: List[ChapterSchema]
 
 # For aiNotes
 class KeyConceptDefinition(BaseModel):

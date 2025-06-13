@@ -1,35 +1,33 @@
-from fastapi import APIRouter, HTTPException, Query, UploadFile, File, BackgroundTasks
+from fastapi import APIRouter, HTTPException, Query, UploadFile, File, BackgroundTasks, Depends
 from typing import List, Optional, Dict, Any
-from .. import crud, models, ai_services # Use relative imports
+from sqlalchemy.orm import Session
+from .. import crud, models, ai_services
+from ..database import get_db
 import os
-import logging # Add this import
+import logging
 
 router = APIRouter(
     tags=["notebooks"],
 )
 
-@router.get("", response_model=List[models.Notebook])
-async def read_notebooks():
-    notebooks = crud.get_notebooks()
-    if not notebooks:
-        # Depending on desired behavior, could return empty list or 404
-        # For now, returning empty list if no data, which is common.
-        return []
+@router.get("", response_model=List[models.NotebookSchema])
+async def read_notebooks(db: Session = Depends(get_db)):
+    notebooks = crud.get_notebooks(db=db)
     return notebooks
 
-@router.get("/{notebook_id}", response_model=models.Notebook)
-async def read_notebook_detail(notebook_id: str):
-    notebook = crud.get_notebook_by_id(notebook_id)
+@router.get("/{notebook_id}", response_model=models.NotebookSchema)
+async def read_notebook_detail(notebook_id: int, db: Session = Depends(get_db)):
+    notebook = crud.get_notebook_by_id(db=db, notebook_id=notebook_id)
     if notebook is None:
         raise HTTPException(status_code=404, detail=f"Notebook with ID {notebook_id} not found")
     return notebook
 
-@router.get("/{notebook_id}/chapters", response_model=List[models.Chapter]) # Changed response_model
-async def read_notebook_chapters(notebook_id: str):
-    chapter_list_obj = crud.get_chapters_for_notebook(notebook_id) # This returns a ChapterList object
+@router.get("/{notebook_id}/chapters", response_model=List[models.ChapterSchema])
+async def read_notebook_chapters(notebook_id: int, db: Session = Depends(get_db)):
+    chapter_list_obj = crud.get_chapters_for_notebook(db, notebook_id=notebook_id)
     if chapter_list_obj is None:
         raise HTTPException(status_code=404, detail=f"Chapters for notebook ID {notebook_id} not found")
-    return chapter_list_obj.chapters # Return the actual list of Chapter objects
+    return chapter_list_obj.chapters
 
 @router.get("/{notebook_id}/content", response_model=models.DocumentContent)
 async def read_document_content(

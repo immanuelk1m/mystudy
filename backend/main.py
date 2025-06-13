@@ -1,21 +1,16 @@
-import json
-import re
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from backend.routers import notebooks, batch_processing
-from pathlib import Path
-import os
+from .database import engine, Base
+from .routers import notebooks, batch_processing
 
-def read_json_file(file_path):
-    with open(file_path, "r", encoding="utf-8") as f:
-        return json.load(f)
+Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
 
 # CORS 설정
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:8080"], # Changed line
+    allow_origins=["http://localhost:8080"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -23,6 +18,3 @@ app.add_middleware(
 
 app.include_router(notebooks.router, prefix="/api/notebooks", tags=["notebooks"])
 app.include_router(batch_processing.router, prefix="/api/batch-process-pdfs", tags=["batch-processing"])
-
-BASE_DIR = Path(__file__).resolve().parent
-DATA_DIR = BASE_DIR / "data"

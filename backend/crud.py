@@ -1,14 +1,14 @@
 import json
 import os
-import shutil # For file operations
-import uuid # For unique filenames
+import shutil
+import uuid
 from typing import List, Optional, Dict, Any, Tuple
-from fastapi import UploadFile # For type hinting
-from datetime import datetime # For timestamping new notebooks
+from fastapi import UploadFile
+from datetime import datetime
 from pydantic import BaseModel
+from sqlalchemy.orm import Session, joinedload, subqueryload
 
-
-from . import models # Use relative import
+from . import models
 
 # Base directory for the backend application
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -16,8 +16,6 @@ DATA_DIR = os.path.join(BASE_DIR, 'data')
 STATIC_DIR = os.path.join(BASE_DIR, 'static')
 UPLOADS_DIR = os.path.join(STATIC_DIR, 'uploads')
 
-# Ensure upload directories exist (though main.py also does this for static/uploads)
-# Specific subdirectories per notebook/chapter for uploads will be created on demand
 if not os.path.exists(UPLOADS_DIR):
     os.makedirs(UPLOADS_DIR)
 
@@ -52,7 +50,6 @@ def convert_to_serializable(obj: Any) -> Any:
 def _save_json(file_path: str, data: Any) -> bool:
     """Helper function to save data to a JSON file."""
     try:
-        # Ensure parent directory exists
         os.makedirs(os.path.dirname(file_path), exist_ok=True)
         with open(file_path, 'w', encoding='utf-8') as f:
             json.dump(data, f, indent=2, ensure_ascii=False)
@@ -61,96 +58,60 @@ def _save_json(file_path: str, data: Any) -> bool:
         print(f"Error saving JSON to {file_path}: {e}")
         return False
 
-def get_notebooks() -> List[models.Notebook]:
-    notebooks_data = load_json(os.path.join(DATA_DIR, 'notebooks.json'))
-    if notebooks_data:
-        return [models.Notebook(**nb) for nb in notebooks_data]
-    return []
+# --- Database-backed CRUD for Notebooks ---
 
+def get_notebooks(db: Session) -> List[models.Notebook]:
+    """Retrieves all notebooks from the database."""
+    return db.query(models.Notebook).all()
 
-def get_all_notebook_titles() -> List[str]:
-    """Retrieves a list of all notebook titles."""
-    notebooks = get_notebooks()
+def get_notebook_by_id(db: Session, notebook_id: int) -> Optional[models.Notebook]:
+    """
+    Retrieves a single notebook by its ID, with its chapters, files, and content
+    eagerly loaded.
+    """
+    return db.query(models.Notebook).options(
+        joinedload(models.Notebook.chapters).subqueryload(models.Chapter.files),
+        joinedload(models.Notebook.chapters).subqueryload(models.Chapter.contents)
+    ).filter(models.Notebook.id == notebook_id).first()
+
+def create_notebook(db: Session, title: str, description: str) -> models.Notebook:
+    """Creates a new notebook in the database."""
+    new_notebook = models.Notebook(
+        title=title,
+        description=description,
+        lastUpdated=datetime.now(),
+        filesCount=0
+    )
+    db.add(new_notebook)
+    db.commit()
+    db.refresh(new_notebook)
+    return new_notebook
+
+def get_or_create_notebook(db: Session, title: str) -> models.Notebook:
+    """Gets a notebook by title if it exists, otherwise creates a new one."""
+    notebook = db.query(models.Notebook).filter(models.Notebook.title == title).first()
+    if notebook:
+        return notebook
+    
+    # Create new notebook if not found
+    return create_notebook(db, title, f"Notebook for {title}.")
+
+def get_all_notebook_titles(db: Session) -> List[str]:
+    """Retrieves a list of all notebook titles from the database."""
+    notebooks = get_notebooks(db)
     return [nb.title for nb in notebooks]
 
-def get_or_create_notebook(title: str) -> models.Notebook:
-    """Gets a notebook by title if it exists, otherwise creates a new one."""
-    notebooks_file_path = os.path.join(DATA_DIR, 'notebooks.json')
-    notebooks_list = load_json(notebooks_file_path)
-    if notebooks_list is None: # Handle case where notebooks.json doesn't exist or is empty/invalid
-        notebooks_list = []
+# The functions below still use the JSON file system.
+# They will need to be migrated to a database-backed approach if chapters,
+# documents, and file structures are to be stored in the database as well.
+# For now, we leave them as they are to focus on the notebook migration.
 
-    # Check if notebook with the same title already exists (case-sensitive)
-    for nb_data in notebooks_list:
-        if nb_data.get('title') == title:
-            return models.Notebook(**nb_data)
-
-    # If not found, create a new notebook
-    if not notebooks_list:
-        new_notebook_id = "1"
-    else:
-        # Find the max existing ID and add 1
-        max_id = 0
-        for nb in notebooks_list:
-            try:
-                # Make sure to handle non-integer IDs gracefully
-                current_id = int(nb.get('id', 0))
-                if current_id > max_id:
-                    max_id = current_id
-            except (ValueError, TypeError):
-                # This notebook has a non-integer ID, so we skip it.
-                # Consider logging this event if it's unexpected.
-                continue
-        new_notebook_id = str(max_id + 1)
-        
-    new_notebook_data = {
-        "id": new_notebook_id,
-        "title": title,
-        "description": f"Notebook for {title}.", # Default description
-        "lastUpdated": datetime.now().isoformat(),
-        "filesCount": 0
-    }
-    
-    notebooks_list.append(new_notebook_data)
-    
-    if _save_json(notebooks_file_path, notebooks_list):
-        return models.Notebook(**new_notebook_data)
-    else:
-        # This case should ideally raise an exception or handle error more robustly.
-        # If saving fails, the application state might become inconsistent.
-        print(f"CRITICAL: Failed to save new notebook '{title}' to {notebooks_file_path}.")
-        # Raise an exception to signal failure to the caller, allowing for transactional rollback or error handling.
-        raise IOError(f"Failed to save notebook: {title}")
-
-def get_notebook_by_id(notebook_id: str) -> Optional[models.Notebook]:
-    notebooks_data = load_json(os.path.join(DATA_DIR, 'notebooks.json'))
-    if notebooks_data:
-        for nb_data in notebooks_data:
-            if nb_data.get('id') == notebook_id:
-                return models.Notebook(**nb_data)
-    return None
-
-def get_chapters_for_notebook(notebook_id: str) -> Optional[models.ChapterList]:
-    chapters_file_path = os.path.join(DATA_DIR, 'chapters', f'{notebook_id}.json')
-    raw_data = load_json(chapters_file_path)
-
-    if raw_data is None:
-        return None # File not found or invalid JSON
-
-    # Expecting raw_data to be like {"chapters": ["title1", "title2", ...]}
-    chapter_titles: List[str] = raw_data.get('chapters', [])
-
-    transformed_chapters: List[models.Chapter] = []
-    for i, title in enumerate(chapter_titles):
-        transformed_chapters.append(
-            models.Chapter(
-                id=i + 1,  # 1-based ID
-                title=title,
-                notebook_id=notebook_id
-            )
-        )
-
-    return models.ChapterList(chapters=transformed_chapters)
+def get_chapters_for_notebook(db: Session, notebook_id: int) -> Optional[models.ChapterList]:
+    """Retrieves all chapters for a given notebook from the database."""
+    chapters = db.query(models.Chapter).filter(models.Chapter.notebook_id == notebook_id).all()
+    if not chapters:
+        return None
+    return models.ChapterList(chapters=chapters)
 
 def _transform_outline_item(item: Dict[str, Any]) -> None:
     """Recursively transforms 'title' to 'text' in an outline item and its children."""
