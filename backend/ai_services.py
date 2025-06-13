@@ -644,3 +644,205 @@ async def analyze_holistic_structure(all_pdf_texts: List[Dict[str, str]]) -> Opt
         import traceback
         traceback.print_exc()
         return None
+
+# --- Interactive Story Game Generation ---
+
+class StoryChoice(BaseModel):
+    """A choice a user can make in the story."""
+    text: str = PydanticField(..., description="The text displayed for the choice.")
+    next_scene_id: str = PydanticField(..., alias="nextSceneId", description="The ID of the scene this choice leads to.")
+
+class StoryScene(BaseModel):
+    """A single scene in the interactive story."""
+    scene_id: str = PydanticField(..., alias="sceneId", description="A unique identifier for the scene (e.g., 'start', 'scene_2').")
+    text: str = PydanticField(..., description="The descriptive text for the scene, advancing the story.")
+    choices: Optional[List[StoryChoice]] = PydanticField(None, description="A list of choices for the user. If null, this is an ending scene.")
+
+class StoryGame(BaseModel):
+    """The complete structure of the interactive story game."""
+    title: str = PydanticField(..., description="The title of the story game, based on the chapter title.")
+    start_scene_id: str = PydanticField(..., alias="startSceneId", description="The ID of the starting scene.")
+    scenes: List[StoryScene] = PydanticField(..., description="A list of all scenes in the story.")
+
+def _create_html_from_story_game(story_game: StoryGame) -> str:
+    """
+    Generates a self-contained HTML string from a StoryGame object.
+    CSS and JavaScript for game logic are embedded within the HTML.
+    """
+    
+    # Convert Pydantic scenes to a dictionary for easy JavaScript access
+    scenes_json = story_game.json(by_alias=True)
+
+    html_template = f"""
+&lt;!DOCTYPE html&gt;
+&lt;html lang="ko"&gt;
+&lt;head&gt;
+    &lt;meta charset="UTF-8"&gt;
+    &lt;meta name="viewport" content="width=device-width, initial-scale=1.0"&gt;
+    &lt;title&gt;{story_game.title}&lt;/title&gt;
+    &lt;style&gt;
+        body {{
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background-color: #f0f2f5;
+            color: #1c1e21;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }}
+        #game-container {{
+            background-color: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+            max-width: 600px;
+            width: 100%;
+            text-align: center;
+            transition: all 0.3s ease;
+        }}
+        h1 {{
+            color: #0056b3;
+            margin-bottom: 20px;
+        }}
+        #scene-text {{
+            font-size: 1.1em;
+            line-height: 1.6;
+            margin-bottom: 25px;
+            min-height: 100px;
+            text-align: left;
+        }}
+        #choices-container {{
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }}
+        .choice-button {{
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 12px 20px;
+            font-size: 1em;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            width: 100%;
+            box-sizing: border-box;
+        }}
+        .choice-button:hover {{
+            background-color: #0056b3;
+        }}
+        .choice-button:disabled {{
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }}
+    &lt;/style&gt;
+&lt;/head&gt;
+&lt;body&gt;
+    &lt;div id="game-container"&gt;
+        &lt;h1&gt;{story_game.title}&lt;/h1&gt;
+        &lt;div id="scene-text"&gt;&lt;/div&gt;
+        &lt;div id="choices-container"&gt;&lt;/div&gt;
+    &lt;/div&gt;
+
+    &lt;script&gt;
+        const storyData = {scenes_json};
+        const scenes = storyData.scenes.reduce((acc, scene) => {{
+            acc[scene.sceneId] = scene;
+            return acc;
+        }}, {{}});
+
+        const sceneTextElement = document.getElementById('scene-text');
+        const choicesContainer = document.getElementById('choices-container');
+
+        function showScene(sceneId) {{
+            const scene = scenes[sceneId];
+            if (!scene) {{
+                console.error(`Scene with id ${{sceneId}} not found.`);
+                sceneTextElement.textContent = "이야기를 찾을 수 없습니다. 오류가 발생했습니다.";
+                choicesContainer.innerHTML = '';
+                return;
+            }}
+
+            sceneTextElement.textContent = scene.text;
+            choicesContainer.innerHTML = '';
+
+            if (scene.choices && scene.choices.length > 0) {{
+                scene.choices.forEach(choice => {{
+                    const button = document.createElement('button');
+                    button.textContent = choice.text;
+                    button.className = 'choice-button';
+                    button.onclick = () => showScene(choice.nextSceneId);
+                    choicesContainer.appendChild(button);
+                }});
+            }} else {{
+                // This is an ending scene
+                const endMessage = document.createElement('p');
+                endMessage.textContent = "이야기가 끝났습니다. 플레이해주셔서 감사합니다!";
+                choicesContainer.appendChild(endMessage);
+            }}
+        }}
+
+        document.addEventListener('DOMContentLoaded', () => {{
+            showScene(storyData.startSceneId);
+        }});
+    &lt;/script&gt;
+&lt;/body&gt;
+&lt;/html&gt;
+    """
+    return html_template.strip()
+
+async def generate_story_game_html(chapter_title: str, chapter_content: str) -> Optional[str]:
+    """
+    Generates a self-contained, interactive HTML story game based on chapter content.
+
+    Args:
+        chapter_title: The title of the chapter.
+        chapter_content: The text content of the chapter.
+
+    Returns:
+        A string containing a full, self-contained HTML document for the game, or None on failure.
+    """
+    if not chapter_content:
+        return None
+
+    parser = JsonOutputParser(pydantic_object=StoryGame)
+
+    prompt_template = ChatPromptTemplate.from_messages([
+        ("system", "모든 생성되는 텍스트는 반드시 한국어로 작성해 주십시오. 응답은 한국어로만 제공되어야 합니다. "
+                   "You are an expert educational game designer. Your mission is to transform the provided academic chapter content into a simple, engaging, and interactive story-based game. "
+                   "The game must be self-contained in a single HTML file. "
+                   "The story should be based on the key concepts of the chapter, allowing the user to learn while playing. "
+                   "Create a narrative with a clear beginning, a few branching choices, and a definitive end. The story should consist of 3 to 5 scenes. "
+                   "The output must be a JSON object that strictly follows this Pydantic schema:\n{format_instructions}\n"
+                   "Ensure all text (titles, scene descriptions, choices) is in Korean. The scene and choice IDs should be simple strings (e.g., 'start', 'scene_2', 'bad_ending')."),
+        ("human", "Please create an interactive story game based on the following chapter."
+                  "\n\n**Chapter Title:** {chapter_title}"
+                  "\n\n**Chapter Content:**\n--BEGIN CONTENT--\n{chapter_content}\n--END CONTENT--")
+    ])
+
+    chain = prompt_template | llm | parser
+
+    try:
+        story_game_data = await chain.ainvoke({
+            "chapter_title": chapter_title,
+            "chapter_content": chapter_content,
+            "format_instructions": parser.get_format_instructions()
+        })
+        
+        # The parser returns a dict, which we can validate with our Pydantic model
+        story_game_model = StoryGame(**story_game_data)
+        
+        # Now, generate the final HTML from the structured data
+        return _create_html_from_story_game(story_game_model)
+
+    except ValidationError as e:
+        print(f"[STORY GAME GEN] Pydantic validation error in LLM output: {e.json()}")
+        return None
+    except Exception as e:
+        print(f"[STORY GAME GEN] Unexpected error in generate_story_game_html: {e}")
+        import traceback
+        traceback.print_exc()
+        return None

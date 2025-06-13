@@ -4,12 +4,15 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { MessageSquare, Book, CheckSquare, Volume2, CheckCircle, XCircle, Podcast, ChevronLeft, ChevronRight } from 'lucide-react';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { MessageSquare, Book, CheckSquare, Volume2, CheckCircle, XCircle, Podcast, ChevronLeft, ChevronRight, Gamepad2, Loader2 } from 'lucide-react';
 import { toast } from 'sonner'; // sonner import 추가
 import PodcastView from './PodcastView'; // PodcastView import 추가
+import { generateChapterGame } from '@/services/api'; // generateChapterGame import 추가
 
 // Define types for props
 interface DocumentContent {
+  game_html?: string;
   title: string;
   metadata: string;
   documentContent: Array<{ type: string; level?: number; text?: string; items?: string[] }>;
@@ -53,8 +56,20 @@ const DocumentViewer = ({ notebookId, selectedChapter, documentData, fileStructu
   const [results, setResults] = useState<Record<number, boolean | null>>({});
   const [audioPath, setAudioPath] = useState<string | null>(null); // State to store audio path
   const [isPodcastStarted, setIsPodcastStarted] = useState(false); // 팟캐스트 시작 상태
+  const [isGeneratingGame, setIsGeneratingGame] = useState(false);
+  const [gameHtml, setGameHtml] = useState<string | null>(null);
   // 각 주요 개념별 설명 난이도 상태. key: concept.term, value: ExplanationLevel
   const [keyConceptExplanationLevels, setKeyConceptExplanationLevels] = useState<Record<string, ExplanationLevel>>({});
+
+  useEffect(() => {
+    if (documentData?.game_html) {
+      setGameHtml(documentData.game_html);
+    } else {
+      setGameHtml(null);
+    }
+    setIsGeneratingGame(false);
+  }, [documentData]);
+
 
   // documentData.aiNotes.keyConcepts가 변경되거나 처음 로드될 때 각 개념의 초기 난이도를 'medium'으로 설정
   useEffect(() => {
@@ -162,6 +177,35 @@ const DocumentViewer = ({ notebookId, selectedChapter, documentData, fileStructu
     }
   };
 
+  const handleGenerateGame = async () => {
+    if (!notebookId || !selectedChapter) {
+      toast.error("게임 생성을 위해 노트북과 챕터를 선택해야 합니다.");
+      return;
+    }
+
+    // selectedChapter에서 chapterId(숫자) 추출
+    const chapterIdMatch = selectedChapter.match(/^(\d+)\./);
+    if (!chapterIdMatch) {
+      toast.error("유효한 챕터 ID를 찾을 수 없습니다.");
+      return;
+    }
+    const chapterId = chapterIdMatch[1];
+
+    setIsGeneratingGame(true);
+    toast.info("챕터 게임 생성을 시작합니다...");
+
+    try {
+      const result = await generateChapterGame(notebookId, chapterId);
+      setGameHtml(result.game_html);
+      toast.success(result.message);
+    } catch (error) {
+      console.error("Failed to generate chapter game:", error);
+      toast.error(error instanceof Error ? error.message : "게임 생성 중 오류가 발생했습니다.");
+    } finally {
+      setIsGeneratingGame(false);
+    }
+  };
+
   const handleStartPodcast = () => {
     setIsPodcastStarted(true);
   };
@@ -239,7 +283,59 @@ const DocumentViewer = ({ notebookId, selectedChapter, documentData, fileStructu
               </TabsTrigger>
             </TabsList>
 
-            <div className="flex items-center">
+            <div className="flex items-center gap-2">
+              {/* Game functionality */}
+              {gameHtml ? (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="outline" size="sm" className="flex items-center gap-1 h-8">
+                      <Gamepad2 className="h-4 w-4" />
+                      게임 플레이
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent className="max-w-4xl h-[80vh]">
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>챕터 게임</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        게임을 통해 학습한 내용을 복습해보세요.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <div className="w-full h-full border rounded-md overflow-hidden">
+                      <iframe
+                        srcDoc={gameHtml}
+                        title="Chapter Game"
+                        className="w-full h-full"
+                        sandbox="allow-scripts allow-same-origin"
+                      />
+                    </div>
+                    <AlertDialogFooter>
+                      <AlertDialogAction>닫기</AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              ) : (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex items-center gap-1 h-8"
+                  onClick={handleGenerateGame}
+                  disabled={isGeneratingGame}
+                >
+                  {isGeneratingGame ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      생성 중...
+                    </>
+                  ) : (
+                    <>
+                      <Gamepad2 className="h-4 w-4" />
+                      해당 챕터 게임 생성하기
+                    </>
+                  )}
+                </Button>
+              )}
+
+
               {/* Audio functionality */}
               <Button
                 variant="ghost"

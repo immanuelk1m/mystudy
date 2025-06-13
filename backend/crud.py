@@ -9,6 +9,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session, joinedload, subqueryload
 
 from . import models
+from .database import SessionLocal
 
 # Base directory for the backend application
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -101,16 +102,37 @@ def get_all_notebook_titles(db: Session) -> List[str]:
     notebooks = get_notebooks(db)
     return [nb.title for nb in notebooks]
 
+def get_chapter_by_id(db: Session, chapter_id: int) -> Optional[models.Chapter]:
+    """Retrieves a single chapter by its ID, with its contents eagerly loaded."""
+    return db.query(models.Chapter).options(
+        joinedload(models.Chapter.contents)
+    ).filter(models.Chapter.id == chapter_id).first()
+
+def update_chapter_game_html(db: Session, chapter_id: int, game_html: str) -> Optional[models.Chapter]:
+    """Updates the game_html content for a specific chapter."""
+    chapter = db.query(models.Chapter).filter(models.Chapter.id == chapter_id).first()
+    if chapter:
+        chapter.game_html = game_html
+        db.commit()
+        db.refresh(chapter)
+        return chapter
+    return None
+
 # The functions below still use the JSON file system.
 # They will need to be migrated to a database-backed approach if chapters,
 # documents, and file structures are to be stored in the database as well.
 # For now, we leave them as they are to focus on the notebook migration.
 
 def get_chapters_for_notebook(db: Session, notebook_id: int) -> Optional[models.ChapterList]:
-    """Retrieves all chapters for a given notebook from the database."""
+    """Retrieve all chapters for a given notebook from the database."""
     chapters = db.query(models.Chapter).filter(models.Chapter.notebook_id == notebook_id).all()
     if not chapters:
         return None
+    # This part seems to be returning a Pydantic model, which is fine.
+    # The key is that the chapters are fetched.
+    # To align with the original return type, we'll wrap it.
+    # However, if the caller just needs a list of chapters, this could be simplified.
+    # For now, keeping as is.
     return models.ChapterList(chapters=chapters)
 
 def _transform_outline_item(item: Dict[str, Any]) -> None:
@@ -300,11 +322,13 @@ def create_notebook_and_chapters_from_processing(
 ) -> Optional[str]:
     """
     Creates a notebook (or gets an existing one) and then creates all chapters
-    from a list of generated DocumentContent objects.
+    from a list of generated DocumentContent objects. This function manages its
+    own database session to be safely called from background processes.
     """
+    db = SessionLocal()
     try:
         # 1. Get or create the notebook
-        notebook = get_or_create_notebook(notebook_title)
+        notebook = get_or_create_notebook(db, title=notebook_title)
         if not notebook:
             print(f"Failed to get or create notebook with title: {notebook_title}")
             return None
@@ -316,7 +340,7 @@ def create_notebook_and_chapters_from_processing(
             # By calling this inside the loop, we re-evaluate the next chapter number
             # based on the *current* state of the chapters file, ensuring correctness
             # even if a previous iteration failed.
-            str_next_chapter_num, chapters_file_path, new_content_path, new_structure_path, chapters_data = _get_next_chapter_number_and_path_params(notebook_id)
+            str_next_chapter_num, chapters_file_path, new_content_path, new_structure_path, chapters_data = _get_next_chapter_number_and_path_params(str(notebook_id))
 
             # 2a. Save the new DocumentContent
             if not _save_json(new_content_path, content_item.dict(exclude_none=True)):
@@ -358,20 +382,18 @@ def create_notebook_and_chapters_from_processing(
         if final_chapters_data and 'chapters' in final_chapters_data:
             files_count = len(final_chapters_data['chapters'])
         
-        all_notebooks = load_json(os.path.join(DATA_DIR, 'notebooks.json'))
-        if all_notebooks:
-            for nb in all_notebooks:
-                if nb['id'] == notebook_id:
-                    nb['filesCount'] = files_count
-                    nb['lastUpdated'] = datetime.now().isoformat()
-                    break
-            _save_json(os.path.join(DATA_DIR, 'notebooks.json'), all_notebooks)
+        notebook.filesCount = files_count
+        notebook.lastUpdated = datetime.now()
+        db.commit()
 
-        return notebook_id
+        return str(notebook_id)
 
     except Exception as e:
         print(f"An error occurred during notebook and chapter creation from processing: {e}")
+        db.rollback()
         return None
+    finally:
+        db.close()
 
 # --- Functions for Run Logs ---
 

@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException, Query, UploadFile, File, BackgroundTasks, Depends
 from typing import List, Optional, Dict, Any
+import html
 from sqlalchemy.orm import Session
 from .. import crud, models, ai_services
 from ..database import get_db
@@ -73,8 +74,8 @@ def _extract_text_from_document_content(doc_content: models.DocumentContent) -> 
     full_text = f"{doc_content.title}\n\n"
     if doc_content.documentContent:
         for block in doc_content.documentContent:
-            if isinstance(block, dict) and block.get('type') in ['paragraph', 'heading'] and 'text' in block:
-                full_text += block['text'] + "\n"
+            if isinstance(block, dict) and block.get('type') in ['paragraph', 'heading'] and 'content' in block:
+                full_text += block['content'] + "\n"
             # Add more sophisticated text extraction if content blocks are more varied
     return full_text.strip()
 
@@ -118,7 +119,60 @@ async def generate_ai_notes_for_chapter(notebook_id: str, chapter_number: str, b
     return {"message": "AI notes generation started in background. Notes will be updated shortly.", "current_ai_notes_placeholder": existing_content.aiNotes}
 
 
-@router.post("/{notebook_id}/upload-and-create-chapter", 
+@router.post("/chapters/{chapter_id}/generate-game",
+             response_model=models.ChapterSchema,
+             summary="Generate an interactive game for a chapter")
+async def generate_chapter_game(chapter_id: int, db: Session = Depends(get_db)):
+    """
+    Generates an interactive story game in HTML based on the chapter's content.
+    The generated HTML is then saved back to the chapter's `game_html` field.
+    """
+    # 1. Fetch the chapter from the database
+    chapter = crud.get_chapter_by_id(db, chapter_id=chapter_id)
+    if not chapter:
+        raise HTTPException(status_code=404, detail=f"Chapter with ID {chapter_id} not found")
+
+    # 2. Extract content for the game generation
+    content_entry = db.query(models.Content).filter(models.Content.chapter_id == chapter_id).first()
+    
+    if not content_entry:
+        raise HTTPException(status_code=400, detail="Chapter content is empty or invalid.")
+
+    content_data = content_entry.data
+    if not isinstance(content_data, dict) or "text" not in content_data:
+        raise HTTPException(status_code=400, detail="Invalid content format: 'text' field missing.")
+    
+    chapter_text_content = content_data["text"]
+
+    if not chapter_text_content.strip():
+        raise HTTPException(status_code=400, detail="Chapter content text is empty.")
+
+    # 3. Generate the game HTML using the AI service
+    game_html = await ai_services.generate_story_game_html(
+        chapter_title=chapter.title,
+        chapter_content=chapter_text_content.strip()
+    )
+
+    if not game_html:
+        raise HTTPException(status_code=500, detail="Failed to generate game HTML using AI service.")
+
+    # 4. Unescape and save the generated HTML to the database
+    unescaped_html = html.unescape(game_html)
+    
+    updated_chapter = crud.update_chapter_game_html(
+        db=db,
+        chapter_id=chapter_id,
+        game_html=unescaped_html
+    )
+
+    if not updated_chapter:
+        # This case should be rare if the initial chapter fetch succeeded
+        raise HTTPException(status_code=500, detail="Failed to save the generated game to the database.")
+
+    return updated_chapter
+
+
+@router.post("/{notebook_id}/upload-and-create-chapter",
              status_code=201, # Created
              response_model=Dict[str, Any], # More specific model can be created
              summary="Upload a PDF and create a new chapter from its content")

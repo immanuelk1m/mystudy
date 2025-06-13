@@ -1,7 +1,7 @@
 from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any, Union
 from datetime import datetime
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, JSON
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, JSON, Text
 from sqlalchemy.orm import relationship
 from .database import Base
 
@@ -22,6 +22,7 @@ class Chapter(Base):
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     title = Column(String)
     order = Column(Integer)
+    game_html = Column(Text, nullable=True)
     notebook_id = Column(Integer, ForeignKey("notebooks.id"))
 
     notebook = relationship("Notebook", back_populates="chapters")
@@ -71,6 +72,7 @@ class ChapterSchema(BaseModel):
     id: int
     title: str
     order: int
+    game_html: Optional[str] = None
     files: List[FileSchema] = []
     contents: List[ContentSchema] = []
 

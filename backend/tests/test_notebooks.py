@@ -83,3 +83,42 @@ def test_get_single_notebook_with_details(client: TestClient, db: Session):
     assert data["chapters"][0]["contents"][0]["data"] == {"key": "value1"}
     assert len(data["chapters"][1]["contents"]) == 1
     assert data["chapters"][1]["contents"][0]["data"] == {"key": "value2"}
+def test_generate_game_for_chapter(client: TestClient, db: Session):
+    # Given: Create a notebook and a chapter with content
+    notebook = Notebook(
+        title="Game Test Notebook",
+        description="A notebook to test game generation.",
+        lastUpdated=datetime.utcnow(),
+        filesCount=0
+    )
+    db.add(notebook)
+    db.commit()
+    db.refresh(notebook)
+
+    chapter = Chapter(
+        title="Game Test Chapter",
+        order=1,
+        notebook_id=notebook.id
+    )
+    db.add(chapter)
+    db.commit()
+    db.refresh(chapter)
+
+    # Add substantial content to the chapter
+    content = Content(
+        data={"text": "This is a long text to ensure that the game generation has enough content. " * 50},
+        chapter_id=chapter.id
+    )
+    db.add(content)
+    db.commit()
+
+    # When: Make a POST request to generate the game
+    response = client.post(f"/api/notebooks/chapters/{chapter.id}/generate-game")
+
+    # Then: Assert the response and the database state
+    assert response.status_code == 200, response.text
+
+    db.refresh(chapter)
+    assert chapter.game_html is not None
+    # Check for either doctype or html tag to be more robust
+    assert "<!doctype html>" in chapter.game_html.lower() or "<html>" in chapter.game_html.lower()

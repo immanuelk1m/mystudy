@@ -1,4 +1,4 @@
-const API_BASE_URL = 'http://localhost:8000/api'; // 백엔드 API 기본 URL
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'; // 백엔드 API 기본 URL
 
 interface GenerateAiNotesResponse {
   message: string;
@@ -30,7 +30,7 @@ export const generateAiNotes = async (
   chapterNumber: string
 ): Promise<GenerateAiNotesResponse> => {
   const response = await fetch(
-    `${API_BASE_URL}/notebooks/${notebookId}/content/${chapterNumber}/generate-ai-notes`,
+    `${API_BASE_URL}/api/notebooks/${notebookId}/content/${chapterNumber}/generate-ai-notes`,
     {
       method: 'POST',
       headers: {
@@ -61,7 +61,7 @@ export const uploadPdfAndCreateChapter = async (
   formData.append('file', file);
 
   const response = await fetch(
-    `${API_BASE_URL}/notebooks/${notebookId}/upload-and-create-chapter`,
+    `${API_BASE_URL}/api/notebooks/${notebookId}/upload-and-create-chapter`,
     {
       method: 'POST',
       // 'Content-Type': 'multipart/form-data' 헤더는 FormData 사용 시 브라우저가 자동으로 설정합니다.
@@ -99,7 +99,7 @@ export const uploadMultiplePdfs = async (
   });
 
   const response = await fetch(
-    `${API_BASE_URL}/batch-process-pdfs/`, // 새 엔드포인트 경로
+    `${API_BASE_URL}/api/batch-process-pdfs/`, // 새 엔드포인트 경로
     {
       method: 'POST',
       // 'Content-Type': 'multipart/form-data' 헤더는 FormData 사용 시 브라우저가 자동으로 설정합니다.
@@ -137,6 +137,7 @@ export interface Chapter {
 export interface ChapterContent {
   // 챕터 내용에 대한 타입을 정의합니다.
   // 예: title: string; summary: string; etc.
+  game_html?: string; // 게임 HTML 컨텐츠
   [key: string]: any; // 우선 간단하게 정의
 }
 
@@ -153,7 +154,7 @@ export interface ChapterStructure {
  * 모든 노트북 목록을 가져옵니다.
  */
 export const getNotebooks = async (): Promise<Notebook[]> => {
-  const response = await fetch(`${API_BASE_URL}/notebooks`);
+  const response = await fetch(`${API_BASE_URL}/api/notebooks`);
   if (!response.ok) {
     throw new Error('Failed to fetch notebooks');
   }
@@ -165,7 +166,7 @@ export const getNotebooks = async (): Promise<Notebook[]> => {
  * @param notebookId 노트북 ID
  */
 export const getNotebook = async (notebookId: string): Promise<Notebook> => {
-  const response = await fetch(`${API_BASE_URL}/notebooks/${notebookId}`);
+  const response = await fetch(`${API_BASE_URL}/api/notebooks/${notebookId}`);
   if (!response.ok) {
     throw new Error(`Failed to fetch notebook ${notebookId}`);
   }
@@ -177,7 +178,7 @@ export const getNotebook = async (notebookId: string): Promise<Notebook> => {
  * @param notebookId 노트북 ID
  */
 export const getChapters = async (notebookId: string): Promise<Chapter[]> => {
-  const response = await fetch(`${API_BASE_URL}/notebooks/${notebookId}/chapters`);
+  const response = await fetch(`${API_BASE_URL}/api/notebooks/${notebookId}/chapters`);
   if (!response.ok) {
     throw new Error(`Failed to fetch chapters for notebook ${notebookId}`);
   }
@@ -190,7 +191,7 @@ export const getChapters = async (notebookId: string): Promise<Chapter[]> => {
  * @param chapterId 챕터 ID
  */
 export const getChapterContent = async (notebookId: string, chapterId: string): Promise<ChapterContent> => {
-  const response = await fetch(`${API_BASE_URL}/notebooks/${notebookId}/content?path=${chapterId}`);
+  const response = await fetch(`${API_BASE_URL}/api/notebooks/${notebookId}/content?path=${chapterId}`);
   if (!response.ok) {
     throw new Error(`Failed to fetch content for chapter ${chapterId}`);
   }
@@ -203,9 +204,33 @@ export const getChapterContent = async (notebookId: string, chapterId: string): 
  * @param chapterId 챕터 ID
  */
 export const getChapterStructure = async (notebookId: string, chapterId: string): Promise<ChapterStructure> => {
-    const response = await fetch(`${API_BASE_URL}/notebooks/${notebookId}/structure?path=${chapterId}`);
+    const response = await fetch(`${API_BASE_URL}/api/notebooks/${notebookId}/structure?path=${chapterId}`);
     if (!response.ok) {
         throw new Error(`Failed to fetch structure for chapter ${chapterId}`);
     }
     return response.json();
+};
+
+/**
+ * 특정 챕터의 게임 생성을 요청합니다.
+ * @param notebookId 노트북 ID
+ * @param chapterId 챕터 ID
+ * @returns 생성된 게임 정보 (주로 game_html 포함)
+ */
+export const generateChapterGame = async (notebookId: string, chapterId: string): Promise<{ message: string; game_html: string }> => {
+  const response = await fetch(
+    `${API_BASE_URL}/api/notebooks/chapters/${chapterId}/generate-game`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    }
+  );
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({ detail: 'Failed to generate chapter game. Unknown error.' }));
+    throw new Error(errorData.detail || 'Failed to generate chapter game');
+  }
+  return response.json();
 };
