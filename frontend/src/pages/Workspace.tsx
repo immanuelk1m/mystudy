@@ -34,6 +34,7 @@ interface DocumentContent {
     answerIndex: number;
     explanation: string;
   }>;
+  game_html?: string;
 }
 
 // Sidebar에 필요한 파일 구조 타입. Chapter 데이터를 이 형태로 변환합니다.
@@ -98,13 +99,16 @@ const Workspace = () => {
                 getChapterContent(notebookId, targetChapterId),
                 getChapterStructure(notebookId, targetChapterId)
             ]);
-            
+
+            const chapterInfo = chaptersResponse.find(ch => ch.id.toString() === targetChapterId);
+
             const transformedData: DocumentContent = {
                 title: contentData.title || '제목 없음',
                 metadata: contentData.metadata || '',
                 documentContent: structureData.nodes || [],
                 aiNotes: contentData.aiNotes || { summary: '', keyConcepts: [], importantTerms: [], outline: [] },
                 quiz: contentData.quiz || [],
+                game_html: chapterInfo?.game_html || contentData.game_html,
                 ...contentData,
             };
             setDocumentData(transformedData);

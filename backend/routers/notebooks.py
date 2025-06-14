@@ -185,7 +185,7 @@ async def generate_chapter_game(chapter_id: int, db: Session = Depends(get_db)):
         # This case should be rare if the initial chapter fetch succeeded
         raise HTTPException(status_code=500, detail="Failed to save the generated game to the database.")
 
-    return updated_chapter
+    return {"message": "Game generated successfully", "game_html": updated_chapter.game_html}
 
 
 @router.post("/{notebook_id}/upload-and-create-chapter",

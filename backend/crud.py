@@ -107,12 +107,17 @@ def get_document_content(db: Session, notebook_id: int, chapter_order: int) -> O
 
     if content and content.data:
         # The transformation logic for 'aiNotes' can be applied here if still needed
-        content_data = content.data
+        content_data = dict(content.data)
         if 'aiNotes' in content_data and isinstance(content_data['aiNotes'], dict) and \
            'outline' in content_data['aiNotes'] and isinstance(content_data['aiNotes']['outline'], list):
             for item in content_data['aiNotes']['outline']:
                 if isinstance(item, dict):
                     _transform_outline_item(item)
+
+        # Include game_html from the related chapter
+        game_html = content.chapter.game_html if content.chapter else None
+        content_data['game_html'] = game_html
+
         try:
             return models.DocumentContent(**content_data)
         except Exception as e:

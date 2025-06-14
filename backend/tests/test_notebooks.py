@@ -118,7 +118,11 @@ def test_generate_game_for_chapter(client: TestClient, db_session: Session):
     # Then: Assert the response and the database state
     assert response.status_code == 200, response.text
 
+    data = response.json()
+    assert "game_html" in data and data["game_html"]
+
     db_session.refresh(chapter)
     assert chapter.game_html is not None
+    assert chapter.game_html == data["game_html"]
     # Check for either doctype or html tag to be more robust
     assert "<!doctype html>" in chapter.game_html.lower() or "<html>" in chapter.game_html.lower()

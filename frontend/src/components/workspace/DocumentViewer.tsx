@@ -89,8 +89,8 @@ const DocumentViewer = ({ notebookId, selectedChapter, documentData, fileStructu
 
     if (notebookId && selectedChapter) {
       // selectedChapter 문자열에서 챕터 번호(첫 번째 숫자) 추출
-      // 예: "1. 행렬과 연립방정식" -> "1" 추출
-      const chapterNumberMatch = selectedChapter.match(/^(\d+)\./);
+      // "1" 또는 "1. 행렬과 연립방정식" 모두 지원
+      const chapterNumberMatch = selectedChapter.match(/^(\d+)/);
 
       if (chapterNumberMatch && chapterNumberMatch[1]) {
         const chapterNumber = chapterNumberMatch[1];
@@ -184,7 +184,8 @@ const DocumentViewer = ({ notebookId, selectedChapter, documentData, fileStructu
     }
 
     // selectedChapter에서 chapterId(숫자) 추출
-    const chapterIdMatch = selectedChapter.match(/^(\d+)\./);
+    // "1" 또는 "1. 챕터 제목" 형식 모두 허용
+    const chapterIdMatch = selectedChapter.match(/^(\d+)/);
     if (!chapterIdMatch) {
       toast.error("유효한 챕터 ID를 찾을 수 없습니다.");
       return;

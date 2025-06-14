@@ -140,6 +140,7 @@ class DocumentContent(BaseModel):
     documentContent: List[Dict[str, Any]] = Field(..., description="A list of content blocks, where each block is a dictionary with 'type', 'content', and optional 'level'.")
     aiNotes: AINotes
     quiz: List[QuizQuestion]
+    game_html: Optional[str] = None
 
 # For File Structure
 class FileStructureItem(BaseModel):
