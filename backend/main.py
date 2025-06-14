@@ -1,13 +1,19 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from contextlib import asynccontextmanager
 from .database import engine, Base
 from .routers import notebooks, batch_processing
 
-Base.metadata.create_all(bind=engine)
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Create tables on startup
+    Base.metadata.create_all(bind=engine)
+    yield
+    # Clean up resources if needed on shutdown
 
-app = FastAPI()
+app = FastAPI(lifespan=lifespan)
 
-# CORS 설정
+# CORS configuration
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:8080"],

@@ -4,11 +4,11 @@ from backend.models import Notebook, Chapter, File, Content
 from datetime import datetime
 import json
 
-def test_read_notebooks(client: TestClient, db: Session):
+def test_read_notebooks(client: TestClient, db_session: Session):
     # Setup: Create a notebook to ensure the list is not empty
     notebook = Notebook(title="Test Notebook", description="A test notebook", lastUpdated=datetime.utcnow(), filesCount=0)
-    db.add(notebook)
-    db.commit()
+    db_session.add(notebook)
+    db_session.commit()
 
     response = client.get("/api/notebooks")
     assert response.status_code == 200
@@ -18,7 +18,7 @@ def test_read_notebooks(client: TestClient, db: Session):
     assert response_data[0]['title'] == "Test Notebook"
 
 
-def test_get_single_notebook_with_details(client: TestClient, db: Session):
+def test_get_single_notebook_with_details(client: TestClient, db_session: Session):
     # 1. Test Data Creation
     # Notebook
     test_notebook = Notebook(
@@ -27,33 +27,33 @@ def test_get_single_notebook_with_details(client: TestClient, db: Session):
         lastUpdated=datetime.utcnow(),
         filesCount=2
     )
-    db.add(test_notebook)
-    db.commit()
-    db.refresh(test_notebook)
+    db_session.add(test_notebook)
+    db_session.commit()
+    db_session.refresh(test_notebook)
 
     # Chapters
     chapter1 = Chapter(title="Chapter 1", order=1, notebook_id=test_notebook.id)
     chapter2 = Chapter(title="Chapter 2", order=2, notebook_id=test_notebook.id)
-    db.add_all([chapter1, chapter2])
-    db.commit()
-    db.refresh(chapter1)
-    db.refresh(chapter2)
+    db_session.add_all([chapter1, chapter2])
+    db_session.commit()
+    db_session.refresh(chapter1)
+    db_session.refresh(chapter2)
 
     # Files
     file1 = File(name="file1.txt", path="/files/file1.txt", type="text/plain", chapter_id=chapter1.id)
     file2 = File(name="file2.txt", path="/files/file2.txt", type="text/plain", chapter_id=chapter2.id)
-    db.add_all([file1, file2])
-    db.commit()
-    db.refresh(file1)
-    db.refresh(file2)
+    db_session.add_all([file1, file2])
+    db_session.commit()
+    db_session.refresh(file1)
+    db_session.refresh(file2)
 
     # Contents
     content1 = Content(data={"key": "value1"}, chapter_id=chapter1.id)
     content2 = Content(data={"key": "value2"}, chapter_id=chapter2.id)
-    db.add_all([content1, content2])
-    db.commit()
-    db.refresh(content1)
-    db.refresh(content2)
+    db_session.add_all([content1, content2])
+    db_session.commit()
+    db_session.refresh(content1)
+    db_session.refresh(content2)
 
 
     # 2. API Call
@@ -83,7 +83,7 @@ def test_get_single_notebook_with_details(client: TestClient, db: Session):
     assert data["chapters"][0]["contents"][0]["data"] == {"key": "value1"}
     assert len(data["chapters"][1]["contents"]) == 1
     assert data["chapters"][1]["contents"][0]["data"] == {"key": "value2"}
-def test_generate_game_for_chapter(client: TestClient, db: Session):
+def test_generate_game_for_chapter(client: TestClient, db_session: Session):
     # Given: Create a notebook and a chapter with content
     notebook = Notebook(
         title="Game Test Notebook",
@@ -91,26 +91,26 @@ def test_generate_game_for_chapter(client: TestClient, db: Session):
         lastUpdated=datetime.utcnow(),
         filesCount=0
     )
-    db.add(notebook)
-    db.commit()
-    db.refresh(notebook)
+    db_session.add(notebook)
+    db_session.commit()
+    db_session.refresh(notebook)
 
     chapter = Chapter(
         title="Game Test Chapter",
         order=1,
         notebook_id=notebook.id
     )
-    db.add(chapter)
-    db.commit()
-    db.refresh(chapter)
+    db_session.add(chapter)
+    db_session.commit()
+    db_session.refresh(chapter)
 
     # Add substantial content to the chapter
     content = Content(
         data={"text": "This is a long text to ensure that the game generation has enough content. " * 50},
         chapter_id=chapter.id
     )
-    db.add(content)
-    db.commit()
+    db_session.add(content)
+    db_session.commit()
 
     # When: Make a POST request to generate the game
     response = client.post(f"/api/notebooks/chapters/{chapter.id}/generate-game")
@@ -118,7 +118,7 @@ def test_generate_game_for_chapter(client: TestClient, db: Session):
     # Then: Assert the response and the database state
     assert response.status_code == 200, response.text
 
-    db.refresh(chapter)
+    db_session.refresh(chapter)
     assert chapter.game_html is not None
     # Check for either doctype or html tag to be more robust
     assert "<!doctype html>" in chapter.game_html.lower() or "<html>" in chapter.game_html.lower()

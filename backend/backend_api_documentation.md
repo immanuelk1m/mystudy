@@ -1,163 +1,201 @@
-# Backend API Specifications and Implementation Details
+# API 문서
 
-This document outlines the backend API endpoints, data structures, and key considerations for the project, based on the analysis of frontend requirements and mock data.
+이 문서는 FastAPI 백엔드 애플리케이션의 모든 API 엔드포인트를 설명합니다.
 
-## 1. API Endpoints and Data Formats
+## Notebooks API
 
-### 1.1. `GET /api/notebooks`
--   **Description**: Fetches a list of all notebooks.
--   **Response Body**: Array of Notebook objects.
+**기본 경로:** `/api/notebooks`
+
+---
+
+### 1. 모든 노트북 목록 조회
+
+-   **엔드포인트:** `GET /`
+-   **설명:** 시스템에 저장된 모든 노트북의 목록을 조회합니다.
+-   **경로 파라미터:** 없음
+-   **쿼리 파라미터:** 없음
+-   **요청 본문:** 없음
+-   **응답 본문:** `List[NotebookSchema]`
     ```json
     [
       {
-        "id": "string",
-        "title": "string",
-        "description": "string",
-        "lastUpdated": "string", // ISO 8601 date format recommended (e.g., "2025-06-15T10:00:00Z")
-        "filesCount": "number"
+        "id": 1,
+        "title": "My First Notebook",
+        "description": "A notebook for general notes.",
+        "lastUpdated": "2023-10-27T10:00:00Z",
+        "filesCount": 5,
+        "chapters": []
       }
-      // ... more notebook objects
     ]
     ```
 
-### 1.2. `GET /api/notebooks/{notebookId}`
--   **Description**: Fetches detailed information for a specific notebook.
--   **Path Parameter**: `notebookId` (string) - The ID of the notebook.
--   **Response Body**: Single Notebook object.
-    ```json
-    {
-      "id": "string",
-      "title": "string",
-      "description": "string",
-      "lastUpdated": "string",
-      "filesCount": "number"
-    }
-    ```
+### 2. 특정 노트북 상세 정보 조회
 
-### 1.3. `GET /api/notebooks/{notebookId}/chapters`
--   **Description**: Fetches a list of chapters for a given notebook.
--   **Path Parameter**: `notebookId` (string) - The ID of the notebook.
--   **Response Body**:
+-   **엔드포인트:** `GET /{notebook_id}`
+-   **설명:** 지정된 `notebook_id`를 가진 노트북의 상세 정보를 조회합니다. 챕터, 파일, 콘텐츠 정보가 포함됩니다.
+-   **경로 파라미터:**
+    -   `notebook_id` (int): 조회할 노트북의 ID.
+-   **쿼리 파라미터:** 없음
+-   **요청 본문:** 없음
+-   **응답 본문:** `NotebookSchema`
     ```json
     {
-      "chapters": ["Chapter Title 1", "Chapter Title 2", "..."]
-    }
-    ```
-
-### 1.4. `GET /api/notebooks/{notebookId}/content`
--   **Description**: Fetches the content of a specific chapter/document within a notebook.
--   **Path Parameter**: `notebookId` (string) - The ID of the notebook.
--   **Query Parameter**: `path` (string) - Identifier for the chapter or document (e.g., chapter number as used by frontend: "1", "2", or a more specific file path if applicable).
--   **Response Body**: `DocumentContent` object.
-    ```json
-    {
-      "title": "string",
-      "metadata": "string",
-      "documentContent": [ // Array of typed content blocks
-        // Example structure (NEEDS CLARIFICATION WITH FRONTEND)
-        // Based on frontend type: Array<{ type: string; level?: number; text?: string; items?: string[] }>
-        { "type": "paragraph", "text": "This is a paragraph." },
-        { "type": "heading", "level": 1, "text": "Main Heading" },
-        { "type": "list", "items": ["item1", "item2"] }
-        // ... other content types like image (e.g., { "type": "image", "src": "url/to/image.png", "alt": "description" }), 
-        // code block (e.g., { "type": "code", "language": "python", "text": "print('hello')" }) etc.
-      ],
-      "aiNotes": {
-        "summary": "string",
-        "keyConcepts": [
-          {
-            "term": "string",
-            // Definition can be a simple string or an object with difficulty levels
-            "definition": "string OR { \"easy\": \"string\", \"medium\": \"string\", \"hard\": \"string\" }"
-          }
-          // ... more key concepts
-        ],
-        "importantTerms": [
-          { "term": "string", "definition": "string" }
-          // ... more important terms
-        ],
-        "outline": [ // Can be nested, representing a table of contents
-          { "title": "string", "id": "string", "children": [ /* ... recursive outline structure ... */ ] }
-          // ... more outline items
-        ]
-      },
-      "quiz": [
+      "id": 1,
+      "title": "My First Notebook",
+      "description": "A notebook for general notes.",
+      "lastUpdated": "2023-10-27T10:00:00Z",
+      "filesCount": 5,
+      "chapters": [
         {
-          "question": "string",
-          "options": ["string"],
-          "answerIndex": "number",
-          "explanation": "string"
+          "id": 1,
+          "title": "Chapter 1",
+          "order": 1,
+          "game_html": null,
+          "files": [],
+          "contents": []
         }
-        // ... more quiz items
       ]
     }
     ```
-    -   **Critical Note**: The structure of `documentContent` is paramount and requires detailed discussion and agreement with the frontend team. The current mock data from the frontend did not fully specify this part.
 
-### 1.5. `GET /api/notebooks/{notebookId}/structure`
--   **Description**: Fetches the file/directory structure for a specific chapter or path within a notebook.
--   **Path Parameter**: `notebookId` (string) - The ID of the notebook.
--   **Query Parameter**: `path` (string) - Identifier for the chapter or document (e.g., chapter number as used by frontend: "1", "2", or a more specific folder path).
--   **Response Body**: Array of `FileStructureItem` objects.
+### 3. 노트북의 챕터 목록 조회
+
+-   **엔드포인트:** `GET /{notebook_id}/chapters`
+-   **설명:** 특정 노트북에 속한 모든 챕터의 목록을 조회합니다.
+-   **경로 파라미터:**
+    -   `notebook_id` (int): 챕터를 조회할 노트북의 ID.
+-   **쿼리 파라미터:** 없음
+-   **요청 본문:** 없음
+-   **응답 본문:** `List[ChapterSchema]`
+
+### 4. 문서 내용 조회
+
+-   **엔드포인트:** `GET /{notebook_id}/content`
+-   **설명:** 특정 노트북의 특정 챕터에 대한 상세 내용을 조회합니다.
+-   **경로 파라미터:**
+    -   `notebook_id` (str): 노트북의 ID.
+-   **쿼리 파라미터:**
+    -   `path` (str, 필수): 조회할 챕터의 번호.
+-   **요청 본문:** 없음
+-   **응답 본문:** `DocumentContent`
+    ```json
+    {
+      "title": "Chapter Title",
+      "metadata": "Source: source.pdf",
+      "documentContent": [
+        {"type": "heading", "content": "Section 1", "level": 1}
+      ],
+      "aiNotes": {
+        "summary": "This is a summary.",
+        "keyConcepts": [{"term": "Concept", "definition": "..."}],
+        "importantTerms": [{"term": "Term", "definition": "..."}],
+        "outline": [{"text": "Outline Item", "id": "1", "children": []}]
+      },
+      "quiz": [
+        {"question": "What is...?", "options": ["A", "B"], "answerIndex": 0, "explanation": "..."}
+      ]
+    }
+    ```
+
+### 5. 파일 구조 조회
+
+-   **엔드포인트:** `GET /{notebook_id}/structure`
+-   **설명:** 특정 노트북의 특정 챕터와 관련된 파일 및 폴더 구조를 조회합니다.
+-   **경로 파라미터:**
+    -   `notebook_id` (str): 노트북의 ID.
+-   **쿼리 파라미터:**
+    -   `path` (str, 필수): 조회할 챕터의 번호.
+-   **요청 본문:** 없음
+-   **응답 본문:** `List[FileStructureItem]`
     ```json
     [
       {
-        "name": "string", // Display name of the file or folder
-        "type": "'file' | 'folder'",
-        "path": "string", // Actual file access path, URL, or unique identifier for fetching
-        "children": [ /* Array of FileStructureItem, if type is 'folder' */ ]
+        "name": "source.pdf",
+        "type": "file",
+        "path": "/static/uploads/1/source.pdf",
+        "children": null
       }
-      // ... more file/folder items
     ]
     ```
 
-## 2. Data Storage and Management
+### 6. AI 노트 생성
 
--   **Notebook Metadata**: (`id`, `title`, `description`, `lastUpdated`, `filesCount`)
-    -   **Storage**: Consider a database (e.g., PostgreSQL, MongoDB) for scalability and querying, or JSON files in a structured directory if the dataset is small and managed manually.
--   **Chapter Information**: (List of chapter titles per notebook)
-    -   **Storage**: Can be part of the notebook metadata document/row or a separate related table/collection.
--   **Document Content (`DocumentContent`)**: (`title`, `metadata`, `documentContent` array, `aiNotes`, `quiz`)
-    -   **Storage**: JSON files per chapter/document (e.g., `data/content/{notebookId}/{chapterPathPart}.json`) are a direct way to map current mock data. For larger systems, a database is preferable. The `documentContent` array itself might store rich text as Markdown, HTML, or a structured JSON format (e.g., similar to Draft.js or TipTap's internal format).
--   **File Structure Information (`FileStructureItem`)**:
-    -   **Storage**: JSON files per chapter/structure scope (e.g., `data/structure/{notebookId}/{chapterPathPart}.json`) or derived dynamically if actual files are stored in a discoverable file system.
--   **Actual Files (Assets)**: (PDFs, PPTX, MP4s, images, etc., referenced in `structure` or `documentContent`)
-    -   **Storage**: A dedicated file storage solution is necessary. Options:
-        -   Local file system served by a static file server (e.g., Nginx, or a route in the backend framework).
-        -   Cloud storage (e.g., AWS S3, Google Cloud Storage, Azure Blob Storage) for scalability, durability, and CDN integration.
-    -   The `path` in `FileStructureItem` or image sources in `documentContent` should resolve to accessible URLs for these assets.
+-   **엔드포인트:** `POST /{notebook_id}/content/{chapter_number}/generate-ai-notes`
+-   **설명:** 기존 챕터의 텍스트 내용을 기반으로 AI 노트(요약, 핵심 개념 등)를 생성합니다. 이 작업은 백그라운드에서 비동기적으로 처리됩니다.
+-   **경로 파라미터:**
+    -   `notebook_id` (str): 노트북의 ID.
+    -   `chapter_number` (str): AI 노트를 생성할 챕터의 번호.
+-   **쿼리 파라미터:** 없음
+-   **요청 본문:** 없음
+-   **응답 본문:** `JSON`
+    ```json
+    {
+      "message": "AI notes generation started in background. Notes will be updated shortly.",
+      "current_ai_notes_placeholder": { ... }
+    }
+    ```
 
-## 3. Key Implementation Considerations
+### 7. 챕터 게임 생성
 
--   **`documentContent` Field Definition (CRITICAL ACTION)**:
-    -   Collaborate urgently with the frontend team to finalize the `documentContent` array's item structures. Define all supported `type` values (e.g., `paragraph`, `heading`, `image`, `codeblock`, `list`, `video_embed`) and their respective properties (e.g., `text`, `level`, `src`, `alt`, `language`, `items`, `embedUrl`).
--   **AI Notes Generation (`aiNotes`)**:
-    -   Determine how `summary`, `keyConcepts`, `importantTerms`, and `outline` will be created and updated. Possible approaches:
-        -   Manual authoring by content creators.
-        -   Integration with external AI/NLP APIs (e.g., OpenAI, Cohere).
-        -   Development of custom in-house models (longer term).
--   **File Serving and Access Control**: 
-    -   Implement robust file serving for assets. If cloud storage is used, generate pre-signed URLs for secure, temporary access if needed.
-    -   Consider access control for sensitive files.
--   **Data Path Mapping**: 
-    -   The frontend uses `notebookId` and `chapterNumber` (derived from chapter title like "1. Chapter Name" -> "1") for `path` query parameters. The backend must reliably map these to the correct data files or database records.
--   **Authentication and Authorization (Future Scope)**:
-    -   Plan for user authentication and authorization if content access needs to be restricted.
--   **Error Handling**: 
-    -   Implement comprehensive error handling for API requests (e.g., 404 for not found, 400 for bad requests, 500 for server errors).
--   **Data Consistency and Updates**: 
-    -   Define how content updates will be managed. If using files, consider versioning or a clear update process. If using a database, transactions and proper indexing are important.
+-   **엔드포인트:** `POST /chapters/{chapter_id}/generate-game`
+-   **설명:** 챕터 내용을 기반으로 대화형 스토리 게임(HTML 형식)을 생성하고 데이터베이스에 저장합니다.
+-   **경로 파라미터:**
+    -   `chapter_id` (int): 게임을 생성할 챕터의 ID.
+-   **쿼리 파라미터:** 없음
+-   **요청 본문:** 없음
+-   **응답 본문:** `ChapterSchema` (업데이트된 `game_html` 필드 포함)
 
-## 4. Development Workflow Suggestions
+### 8. PDF 업로드 및 새 챕터 생성
 
-1.  **Core APIs First**: Implement `GET /api/notebooks` and `GET /api/notebooks/{notebookId}`. Use simple in-memory data or flat files initially for rapid prototyping.
-2.  **Chapters & Basic Structure**: Implement `GET /api/notebooks/{notebookId}/chapters` and `GET /api/notebooks/{notebookId}/structure` (returning basic file/folder lists).
-3.  **Content API - Iterative Approach**:
-    a.  Start `GET /api/notebooks/{notebookId}/content` by returning `title`, `metadata`, `aiNotes` (from mock data), and `quiz`.
-    b.  **Crucially, work with the frontend team to define and implement the `documentContent` structure in parallel.**
-    c.  Incrementally add backend logic to process and serve different `documentContent` types as they are defined.
-4.  **Static File Serving**: Set up a basic mechanism to serve a few test PDF or image files referenced by the `structure` API.
-5.  **Database/Persistent Storage Integration**: Transition from mock/flat-file data to a chosen database or persistent storage solution.
-6.  **Refine and Test**: Continuously test API endpoints with tools like Postman or directly with the frontend as it develops.
+-   **엔드포인트:** `POST /{notebook_id}/upload-and-create-chapter`
+-   **설명:** PDF 파일을 업로드 받아 텍스트를 추출하고, AI를 사용하여 새로운 챕터(콘텐츠, AI 노트, 퀴즈 포함)를 생성한 후 저장합니다.
+-   **경로 파라미터:**
+    -   `notebook_id` (str): 챕터를 추가할 노트북의 ID.
+-   **쿼리 파라미터:** 없음
+-   **요청 본문:** `multipart/form-data`
+    -   `file` (UploadFile): 업로드할 PDF 파일.
+-   **응답 본문:** `Dict[str, Any]`
+    ```json
+    {
+      "message": "Successfully uploaded PDF and created new chapter.",
+      "notebook_id": "1",
+      "new_chapter_number": "3",
+      "new_chapter_title": "New Chapter from PDF",
+      "pdf_path": "/static/uploads/1/document.pdf",
+      "generated_content_preview": { ... }
+    }
+    ```
 
-This document should serve as a living guide and be updated as development progresses and requirements evolve.
+---
+
+## Batch Processing PDFs API
+
+**기본 경로:** `/api/batch-process-pdfs`
+
+---
+
+### 1. PDF 일괄 업로드 및 처리
+
+-   **엔드포인트:** `POST /`
+-   **설명:** 여러 개의 PDF 파일을 동시에 업로드하고, 백그라운드에서 모든 파일을 일괄 처리하는 작업을 시작합니다. 작업 추적을 위한 `run_id`를 반환합니다.
+-   **경로 파라미터:** 없음
+-   **쿼리 파라미터:** 없음
+-   **요청 본문:** `multipart/form-data`
+    -   `files` (List[UploadFile]): 업로드할 PDF 파일 목록.
+-   **응답 본문:** `JSON`
+    ```json
+    {
+      "message": "Started processing for a batch of 2 PDF file(s).",
+      "run_id": "a1b2c3d4-e5f6-7890-1234-567890abcdef"
+    }
+    ```
+
+### 2. 처리 로그 조회
+
+-   **엔드포인트:** `GET /logs/{run_id}`
+-   **설명:** 지정된 `run_id`에 해당하는 일괄 처리 작업의 로그를 조회합니다.
+-   **경로 파라미터:**
+    -   `run_id` (str): 조회할 작업의 실행 ID.
+-   **쿼리 파라미터:** 없음
+-   **요청 본문:** 없음
+-   **응답 본문:** `List` (로그 데이터 배열)
