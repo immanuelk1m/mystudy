@@ -11,6 +11,41 @@ from sqlalchemy.orm import Session, joinedload, subqueryload
 from . import models
 from .database import SessionLocal
 
+def _save_json(file_path: str, data: Any) -> bool:
+    """Helper function to save data to a JSON file."""
+    try:
+        os.makedirs(os.path.dirname(file_path), exist_ok=True)
+        with open(file_path, 'w', encoding='utf-8') as f:
+            json.dump(data, f, indent=2, ensure_ascii=False)
+        return True
+    except Exception as e:
+        print(f"Error saving JSON to {file_path}: {e}")
+        return False
+
+def convert_to_serializable(data: Any) -> Any:
+    """
+    Recursively converts non-serializable data types to serializable ones.
+    Handles sets by converting them to lists.
+    """
+    if isinstance(data, dict):
+        return {k: convert_to_serializable(v) for k, v in data.items()}
+    elif isinstance(data, list):
+        return [convert_to_serializable(i) for i in data]
+    elif isinstance(data, set):
+        return [convert_to_serializable(i) for i in data]
+    # Add other type conversions as needed
+    return data
+
+def load_json(file_path: str) -> Optional[Any]:
+    """Helper function to load data from a JSON file."""
+    if not os.path.exists(file_path):
+        return None
+    try:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except (json.JSONDecodeError, IOError) as e:
+        print(f"Error loading JSON from {file_path}: {e}")
+        return None
 # Base directory for the backend application
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(BASE_DIR, 'data')

@@ -3,8 +3,26 @@ import asyncio
 from typing import TypedDict, Annotated, Sequence, List, Dict, Any
 import operator
 from langgraph.graph import StateGraph, END
+from pydantic import BaseModel
 from . import ai_services, crud # Import the ai_services and crud modules
+from .database import SessionLocal
 import os
+
+def convert_to_serializable(obj: Any) -> Any:
+    """
+    Recursively converts an object to a JSON-serializable format.
+    Pydantic models are converted to dictionaries.
+    """
+    if isinstance(obj, dict):
+        return {k: convert_to_serializable(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [convert_to_serializable(i) for i in obj]
+    if isinstance(obj, BaseModel):
+        # Pydantic 모델의 `dict()` 메서드는 이미 내부적으로 재귀적으로 변환을 처리할 수 있습니다.
+        # `by_alias=True`와 같은 옵션이 필요하다면 여기에 추가할 수 있습니다.
+        return obj.dict()
+    # 다른 직렬화할 수 없는 타입(예: datetime)에 대한 처리를 추가할 수 있습니다.
+    return obj
 
 # 상태 정의
 class ProcessingState(TypedDict):
@@ -121,7 +139,7 @@ async def generate_chapter_content(state: ProcessingState) -> ProcessingState:
 
 def finish_processing(state: ProcessingState) -> ProcessingState:
     print("---모든 처리 완료 및 파일 저장 중---")
-    notebook_title = state.get('notebook_title') # Use the new unified title
+    notebook_title = state.get('notebook_title')
     generated_content = state.get('generated_content')
     run_id = state.get('run_id')
 
@@ -130,13 +148,13 @@ def finish_processing(state: ProcessingState) -> ProcessingState:
         print(error_msg)
         state['final_result'] = f"Error: {error_msg}"
     else:
+        db = SessionLocal()
         try:
-            # crud 함수를 호출하여 파일 시스템에 결과 저장
             notebook_id = crud.create_notebook_and_chapters_from_processing(
+                db=db, # db 세션 전달
                 notebook_title=notebook_title,
                 generated_contents=generated_content
             )
-
             if notebook_id:
                 success_msg = f"'{notebook_title}' 노트북(ID: {notebook_id})에 {len(generated_content)}개의 챕터가 성공적으로 처리 및 저장되었습니다."
                 print(success_msg)
@@ -145,11 +163,12 @@ def finish_processing(state: ProcessingState) -> ProcessingState:
                 error_msg = "CRUD 작업을 통해 노트북과 챕터를 저장하는 데 실패했습니다."
                 print(error_msg)
                 state['final_result'] = f"Error: {error_msg}"
-
         except Exception as e:
             error_msg = f"최종 처리 및 저장 단계에서 예외 발생: {e}"
             print(error_msg)
             state['final_result'] = f"Error: {error_msg}"
+        finally:
+            db.close() # 세션 닫기
 
     # Log the final state before saving the logs
     snapshot = {k: v for k, v in state.items() if k not in ['pdf_text', 'log_entries']}
@@ -159,7 +178,7 @@ def finish_processing(state: ProcessingState) -> ProcessingState:
     # Save all accumulated logs to a file
     if run_id:
         # Convert log entries to be JSON serializable before saving
-        serializable_logs = crud.convert_to_serializable(state['log_entries'])
+        serializable_logs = convert_to_serializable(state['log_entries'])
         if not crud.save_run_log(run_id, serializable_logs):
             print(f"Warning: Failed to save run log for run_id: {run_id}")
     else:
@@ -218,7 +237,7 @@ async def run_graph(run_id: str, pdf_file_paths: List[str]):
         final_state = state  # 마지막 상태를 계속 업데이트
 
         # 상태 스냅샷을 직렬화 가능한 형식으로 변환
-        serializable_snapshot = crud.convert_to_serializable(state)
+        serializable_snapshot = convert_to_serializable(state)
         
         log_entry = {
             "node": node_name,

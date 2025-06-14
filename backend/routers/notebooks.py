@@ -28,7 +28,7 @@ async def read_notebook_chapters(notebook_id: int, db: Session = Depends(get_db)
     chapter_list_obj = crud.get_chapters_for_notebook(db, notebook_id=notebook_id)
     if chapter_list_obj is None:
         raise HTTPException(status_code=404, detail=f"Chapters for notebook ID {notebook_id} not found")
-    return chapter_list_obj.chapters
+    return chapter_list_obj
 
 @router.get("/{notebook_id}/content", response_model=models.DocumentContent)
 async def read_document_content(
