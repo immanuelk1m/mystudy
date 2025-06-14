@@ -1,12 +1,36 @@
-import json
 import asyncio
-from typing import TypedDict, Annotated, Sequence, List, Dict, Any
-import operator
-from langgraph.graph import StateGraph, END
-from pydantic import BaseModel
-from . import ai_services, crud # Import the ai_services and crud modules
-from .database import SessionLocal
+import json
 import os
+import operator
+from typing import Any, Dict, List, Sequence, TypedDict, Annotated
+
+from langgraph.graph import END, StateGraph
+from pydantic import BaseModel
+
+from . import ai_services, crud
+from .database import SessionLocal
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DATA_DIR = os.path.join(BASE_DIR, 'data')
+LOGS_DIR = os.path.join(DATA_DIR, 'logs')
+RUN_LOGS_DIR = os.path.join(LOGS_DIR, 'runs')
+os.makedirs(RUN_LOGS_DIR, exist_ok=True)
+
+def _save_json(file_path: str, data: Any) -> bool:
+    """Helper function to save data to a JSON file."""
+    try:
+        os.makedirs(os.path.dirname(file_path), exist_ok=True)
+        with open(file_path, 'w', encoding='utf-8') as f:
+            json.dump(data, f, indent=2, ensure_ascii=False)
+        return True
+    except Exception as e:
+        print(f"Error saving JSON to {file_path}: {e}")
+        return False
+
+def save_run_log(run_id: str, log_data: list) -> bool:
+    """Saves the log data for a specific run to a JSON file."""
+    log_file_path = os.path.join(RUN_LOGS_DIR, f"{run_id}.json")
+    return _save_json(log_file_path, log_data)
 
 def convert_to_serializable(obj: Any) -> Any:
     """
@@ -151,7 +175,7 @@ def finish_processing(state: ProcessingState) -> ProcessingState:
         db = SessionLocal()
         try:
             notebook_id = crud.create_notebook_and_chapters_from_processing(
-                db=db, # db 세션 전달
+                db=db,
                 notebook_title=notebook_title,
                 generated_contents=generated_content
             )
@@ -168,19 +192,15 @@ def finish_processing(state: ProcessingState) -> ProcessingState:
             print(error_msg)
             state['final_result'] = f"Error: {error_msg}"
         finally:
-            db.close() # 세션 닫기
+            db.close()
 
-    # Log the final state before saving the logs
-    snapshot = {k: v for k, v in state.items() if k not in ['pdf_text', 'log_entries']}
+    snapshot = {k: v for k, v in state.items() if k not in ['all_pdf_texts', 'log_entries']}
     log_entry = {"node": "finish_processing", "status": "completed", "state_snapshot": snapshot}
     state['log_entries'].append(log_entry)
     
-    # Save all accumulated logs to a file
     if run_id:
-        # Convert log entries to be JSON serializable before saving
         serializable_logs = convert_to_serializable(state['log_entries'])
-        if not crud.save_run_log(run_id, serializable_logs):
-            print(f"Warning: Failed to save run log for run_id: {run_id}")
+        save_run_log(run_id, serializable_logs)
     else:
         print("Warning: run_id not found, skipping log saving.")
         
@@ -252,12 +272,5 @@ async def run_graph(run_id: str, pdf_file_paths: List[str]):
             print(f"Stopping execution due to error after {node_name}.")
             break
             
-    # 실행 로그 저장
-    if run_id:
-        if not crud.save_run_log(run_id, run_logs):
-            print(f"Warning: Failed to save run log for run_id: {run_id}")
-    else:
-        print("Warning: run_id not found, skipping log saving.")
-
     # 최종 상태 반환
     return final_state

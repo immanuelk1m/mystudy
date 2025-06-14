@@ -32,12 +32,13 @@ async def read_notebook_chapters(notebook_id: int, db: Session = Depends(get_db)
 
 @router.get("/{notebook_id}/content", response_model=models.DocumentContent)
 async def read_document_content(
-    notebook_id: str, 
-    path: str = Query(..., description="Chapter number or path to content")
+    notebook_id: int,
+    path: str = Query(..., description="Chapter number or path to content"),
+    db: Session = Depends(get_db)
 ):
     try:
         logging.info(f"Attempting to read content for notebook {notebook_id}, chapter {path}")
-        content = crud.get_document_content(notebook_id, chapter_number=path)
+        content = crud.get_document_content(db=db, notebook_id=notebook_id, chapter_order=int(path))
 
         if content is None:
             logging.warning(f"Content not found for notebook {notebook_id}, chapter {path}. Raising 404.")
@@ -57,11 +58,12 @@ async def read_document_content(
 
 @router.get("/{notebook_id}/structure", response_model=List[models.FileStructureItem])
 async def read_file_structure(
-    notebook_id: str, 
-    path: str = Query(..., description="Chapter number or path to structure")
+    notebook_id: int,
+    path: str = Query(..., description="Chapter number or path to structure"),
+    db: Session = Depends(get_db)
 ):
     # Assuming 'path' parameter from frontend is the chapter number
-    structure = crud.get_file_structure(notebook_id, chapter_number=path)
+    structure = crud.get_file_structure(db=db, notebook_id=notebook_id, chapter_order=int(path))
     # crud.get_file_structure returns [] if not found, which matches frontend expectation
     # So, no explicit 404 check here unless we want to differentiate 'no file' vs 'empty structure'
     return structure
@@ -79,16 +81,23 @@ def _extract_text_from_document_content(doc_content: models.DocumentContent) -> 
             # Add more sophisticated text extraction if content blocks are more varied
     return full_text.strip()
 
-@router.post("/{notebook_id}/content/{chapter_number}/generate-ai-notes", 
+@router.post("/{notebook_id}/content/{chapter_number}/generate-ai-notes",
              response_model=models.AINotes,
              summary="Generate AI Notes for existing chapter content")
-async def generate_ai_notes_for_chapter(notebook_id: str, chapter_number: str, background_tasks: BackgroundTasks):
+async def generate_ai_notes_for_chapter(
+    notebook_id: int,
+    chapter_number: int,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db)
+):
     """
     Generates AI-powered notes (summary, key concepts, important terms, outline)
     for the existing textual content of a specified chapter.
     The generation is done in the background.
     """
-    existing_content = crud.get_document_content(notebook_id, chapter_number)
+    existing_content = crud.get_document_content(
+        db=db, notebook_id=notebook_id, chapter_order=chapter_number
+    )
     if not existing_content:
         raise HTTPException(status_code=404, detail=f"Content for notebook {notebook_id}, chapter {chapter_number} not found")
 
@@ -100,21 +109,28 @@ async def generate_ai_notes_for_chapter(notebook_id: str, chapter_number: str, b
     # Note: The client gets an immediate 200 OK, but the notes are updated later.
     # For production, you might want a more robust task queue (Celery, RQ) and a way to notify the client upon completion.
     async def task():
-        print(f"Background task started: Generating AI notes for notebook {notebook_id}, chapter {chapter_number}")
-        new_ai_notes = await ai_services.generate_ai_notes_from_text(text_to_process)
-        if new_ai_notes:
-            if crud.update_document_ai_notes(notebook_id, chapter_number, new_ai_notes):
-                print(f"Successfully updated AI notes for notebook {notebook_id}, chapter {chapter_number}")
+        # IMPORTANT: Create a new DB session for the background task
+        db_task_session = next(get_db())
+        try:
+            print(f"Background task started: Generating AI notes for notebook {notebook_id}, chapter {chapter_number}")
+            new_ai_notes = await ai_services.generate_ai_notes_from_text(text_to_process)
+            if new_ai_notes:
+                if crud.update_document_ai_notes(
+                    db=db_task_session, notebook_id=notebook_id, chapter_order=chapter_number, ai_notes=new_ai_notes
+                ):
+                    print(f"Successfully updated AI notes for notebook {notebook_id}, chapter {chapter_number}")
+                else:
+                    print(f"Error: Failed to save updated AI notes for notebook {notebook_id}, chapter {chapter_number}")
             else:
-                print(f"Error: Failed to save updated AI notes for notebook {notebook_id}, chapter {chapter_number}")
-        else:
-            print(f"Error: Failed to generate AI notes for notebook {notebook_id}, chapter {chapter_number}")
+                print(f"Error: Failed to generate AI notes for notebook {notebook_id}, chapter {chapter_number}")
+        finally:
+            db_task_session.close()
 
     background_tasks.add_task(task)
     
     # For now, return a message indicating the task has started.
     # Or, if we want to return the *old* AINotes or a placeholder:
-    # return existing_content.aiNotes 
+    # return existing_content.aiNotes
     # For this example, let's return a success message, actual notes updated in background.
     return {"message": "AI notes generation started in background. Notes will be updated shortly.", "current_ai_notes_placeholder": existing_content.aiNotes}
 
@@ -176,7 +192,7 @@ async def generate_chapter_game(chapter_id: int, db: Session = Depends(get_db)):
              status_code=201, # Created
              response_model=Dict[str, Any], # More specific model can be created
              summary="Upload a PDF and create a new chapter from its content")
-async def upload_pdf_and_create_chapter(notebook_id: str, file: UploadFile = File(...)):
+async def upload_pdf_and_create_chapter(notebook_id: int, file: UploadFile = File(...)):
     """
     Uploads a PDF file, extracts its text, generates a new chapter content
     (including title, metadata, content blocks, AI notes, and quiz) using an LLM,
