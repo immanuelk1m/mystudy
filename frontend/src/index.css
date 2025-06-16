@@ -5,6 +5,63 @@
 @tailwind components;
 @tailwind utilities;
 
+/* 하이라이트 기능을 위한 스타일 */
+.text-highlight {
+  transition: all 0.2s ease-in-out;
+  position: relative;
+}
+
+.text-highlight:hover {
+  filter: brightness(0.9);
+  transform: scale(1.02);
+}
+
+.text-highlight::after {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  border: 2px solid transparent;
+  border-radius: 4px;
+  pointer-events: none;
+  transition: border-color 0.2s ease-in-out;
+}
+
+.text-highlight:hover::after {
+  border-color: rgba(0, 0, 0, 0.3);
+}
+
+/* 사용자 선택 방지 (하이라이트 모드에서) */
+.highlight-mode {
+  user-select: text;
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  -ms-user-select: text;
+}
+
+.highlight-mode * {
+  cursor: crosshair;
+}
+
+/* 하이라이트 도구바 스타일 */
+.highlight-toolbar {
+  backdrop-filter: blur(8px);
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+/* 하이라이트 클래스 프리뷰 */
+.highlight-preview {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
 @layer base {
   :root {
     --background: 0 0% 100%;

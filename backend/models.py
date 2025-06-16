@@ -1,33 +1,42 @@
 from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any, Union
 from datetime import datetime
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, JSON, Text
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, JSON, Text, Index
 from sqlalchemy.orm import relationship
-from .database import Base
+from database import Base
 
 class Notebook(Base):
     __tablename__ = "notebooks"
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    title = Column(String)
+    title = Column(String, index=True)  # Add index for search queries
     description = Column(String)
-    lastUpdated = Column(DateTime)
+    lastUpdated = Column(DateTime, index=True)  # Add index for sorting by date
     filesCount = Column(Integer)
 
     chapters = relationship("Chapter", back_populates="notebook")
+
+    # Add composite index for common query patterns
+    __table_args__ = (
+        Index('idx_notebook_title_updated', 'title', 'lastUpdated'),
+    )
 
 class Chapter(Base):
     __tablename__ = "chapters"
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     title = Column(String)
-    order = Column(Integer)
-    game_html = Column(Text, nullable=True)
-    notebook_id = Column(Integer, ForeignKey("notebooks.id"))
+    order = Column(Integer, index=True)  # Add index for ordering
+    notebook_id = Column(Integer, ForeignKey("notebooks.id"), index=True)  # Add index for foreign key
 
     notebook = relationship("Notebook", back_populates="chapters")
     files = relationship("File", back_populates="chapter")
     contents = relationship("Content", back_populates="chapter")
+
+    # Add composite index for common query patterns
+    __table_args__ = (
+        Index('idx_chapter_notebook_order', 'notebook_id', 'order'),
+    )
 
 class File(Base):
     __tablename__ = "files"
@@ -36,7 +45,7 @@ class File(Base):
     name = Column(String)
     path = Column(String)
     type = Column(String)
-    chapter_id = Column(Integer, ForeignKey("chapters.id"))
+    chapter_id = Column(Integer, ForeignKey("chapters.id"), index=True)  # Add index for foreign key
 
     chapter = relationship("Chapter", back_populates="files")
 
@@ -46,7 +55,7 @@ class Content(Base):
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     data = Column(JSON)
-    chapter_id = Column(Integer, ForeignKey("chapters.id"))
+    chapter_id = Column(Integer, ForeignKey("chapters.id"), index=True)  # Add index for foreign key
 
     chapter = relationship("Chapter", back_populates="contents")
 
@@ -72,7 +81,6 @@ class ChapterSchema(BaseModel):
     id: int
     title: str
     order: int
-    game_html: Optional[str] = None
     files: List[FileSchema] = []
     contents: List[ContentSchema] = []
 
@@ -93,15 +101,19 @@ class NotebookSchema(BaseModel):
 class ChapterList(BaseModel):
     chapters: List[ChapterSchema]
 
+class NotebookUpdateRequest(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+
 # For aiNotes
 class KeyConceptDefinition(BaseModel):
     easy: Optional[str] = None
-    medium: Optional[str] = None
+    medium: str
     hard: Optional[str] = None
 
 class KeyConcept(BaseModel):
     term: str
-    definition: Union[str, KeyConceptDefinition]
+    definition: Union[KeyConceptDefinition, str]  # Allow both object and string formats
 
 class ImportantTerm(BaseModel):
     term: str
@@ -140,7 +152,6 @@ class DocumentContent(BaseModel):
     documentContent: List[Dict[str, Any]] = Field(..., description="A list of content blocks, where each block is a dictionary with 'type', 'content', and optional 'level'.")
     aiNotes: AINotes
     quiz: List[QuizQuestion]
-    game_html: Optional[str] = None
 
 # For File Structure
 class FileStructureItem(BaseModel):

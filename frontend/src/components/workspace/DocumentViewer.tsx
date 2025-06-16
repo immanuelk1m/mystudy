@@ -1,24 +1,28 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { MessageSquare, Book, CheckSquare, Volume2, CheckCircle, XCircle, Podcast, ChevronLeft, ChevronRight, Gamepad2, Loader2 } from 'lucide-react';
+import { MessageSquare, Book, CheckSquare, Volume2, CheckCircle, XCircle, Podcast, ChevronLeft, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner'; // sonner import 추가
 import PodcastView from './PodcastView'; // PodcastView import 추가
-import { generateChapterGame } from '@/services/api'; // generateChapterGame import 추가
+import HighlightToolbar from './HighlightToolbar';
+import HighlightGuide from './HighlightGuide';
+import HighlightStats from './HighlightStats';
+import HighlightDemo from './HighlightDemo';
+import { useTextHighlight } from '@/hooks/useTextHighlight';
+import { useHighlight } from '@/contexts/HighlightContext';
 
 // Define types for props
 interface DocumentContent {
-  game_html?: string;
   title: string;
   metadata: string;
   documentContent: Array<{ type: string; level?: number; text?: string; items?: string[] }>;
   aiNotes: {
     summary: string;
-    keyConcepts: Array<{ term: string; definition: string | { easy: string; medium: string; hard: string } }>;
+    keyConcepts: Array<{ term: string; definition: { easy: string; medium: string; hard: string } }>;
     importantTerms: Array<{ term: string; definition: string }>;
     outline: Array<{ title: string; id: string }>;
   };
@@ -46,7 +50,7 @@ interface DocumentViewerProps {
   fileStructure: FileStructureItem[]; // fileStructure prop은 여전히 Sidebar에 필요하므로 받지만, 오디오 경로는 여기서 직접 구성
 }
 
-type ExplanationLevel = 'easy' | 'medium' | 'hard';
+type ExplanationLevel = 'easy' | 'medium' | 'hard' | 'all';
 
 const DocumentViewer = ({ notebookId, selectedChapter, documentData, fileStructure }: DocumentViewerProps) => { // fileStructure prop 받기
   const [isPlaying, setIsPlaying] = useState(false);
@@ -56,19 +60,23 @@ const DocumentViewer = ({ notebookId, selectedChapter, documentData, fileStructu
   const [results, setResults] = useState<Record<number, boolean | null>>({});
   const [audioPath, setAudioPath] = useState<string | null>(null); // State to store audio path
   const [isPodcastStarted, setIsPodcastStarted] = useState(false); // 팟캐스트 시작 상태
-  const [isGeneratingGame, setIsGeneratingGame] = useState(false);
-  const [gameHtml, setGameHtml] = useState<string | null>(null);
   // 각 주요 개념별 설명 난이도 상태. key: concept.term, value: ExplanationLevel
   const [keyConceptExplanationLevels, setKeyConceptExplanationLevels] = useState<Record<string, ExplanationLevel>>({});
 
-  useEffect(() => {
-    if (documentData?.game_html) {
-      setGameHtml(documentData.game_html);
-    } else {
-      setGameHtml(null);
-    }
-    setIsGeneratingGame(false);
-  }, [documentData]);
+  // 하이라이트 기능을 위한 ref
+  const documentContentRef = useRef<HTMLDivElement>(null);
+  const aiNotesRef = useRef<HTMLDivElement>(null);
+
+  // 하이라이트 컨텍스트 사용
+  const { isHighlightMode } = useHighlight();
+
+  // 하이라이트 훅 사용
+  const { removeHighlightElement, restoreHighlights } = useTextHighlight({
+    notebookId,
+    chapterId: selectedChapter || '',
+    containerRef: documentContentRef,
+  });
+
 
 
   // documentData.aiNotes.keyConcepts가 변경되거나 처음 로드될 때 각 개념의 초기 난이도를 'medium'으로 설정
@@ -177,35 +185,6 @@ const DocumentViewer = ({ notebookId, selectedChapter, documentData, fileStructu
     }
   };
 
-  const handleGenerateGame = async () => {
-    if (!notebookId || !selectedChapter) {
-      toast.error("게임 생성을 위해 노트북과 챕터를 선택해야 합니다.");
-      return;
-    }
-
-    // selectedChapter에서 chapterId(숫자) 추출
-    // "1" 또는 "1. 챕터 제목" 형식 모두 허용
-    const chapterIdMatch = selectedChapter.match(/^(\d+)/);
-    if (!chapterIdMatch) {
-      toast.error("유효한 챕터 ID를 찾을 수 없습니다.");
-      return;
-    }
-    const chapterId = chapterIdMatch[1];
-
-    setIsGeneratingGame(true);
-    toast.info("챕터 게임 생성을 시작합니다...");
-
-    try {
-      const result = await generateChapterGame(notebookId, chapterId);
-      setGameHtml(result.game_html);
-      toast.success(result.message);
-    } catch (error) {
-      console.error("Failed to generate chapter game:", error);
-      toast.error(error instanceof Error ? error.message : "게임 생성 중 오류가 발생했습니다.");
-    } finally {
-      setIsGeneratingGame(false);
-    }
-  };
 
   const handleStartPodcast = () => {
     setIsPodcastStarted(true);
@@ -219,12 +198,24 @@ const DocumentViewer = ({ notebookId, selectedChapter, documentData, fileStructu
     }));
   };
 
+  // 모든 개념의 난이도를 한 번에 설정하는 함수
+  const setAllConceptsLevel = (level: ExplanationLevel) => {
+    if (documentData?.aiNotes?.keyConcepts) {
+      const newLevels: Record<string, ExplanationLevel> = {};
+      documentData.aiNotes.keyConcepts.forEach(concept => {
+        newLevels[concept.term] = level;
+      });
+      setKeyConceptExplanationLevels(newLevels);
+    }
+  };
+
   const getExplanationLevelText = (level: ExplanationLevel | undefined) => {
     if (!level) return '보통'; // 기본값
     switch (level) {
       case 'easy': return '쉬움';
       case 'medium': return '보통';
       case 'hard': return '어려움';
+      case 'all': return '전체';
       default: return '보통';
     }
   };
@@ -262,6 +253,11 @@ const DocumentViewer = ({ notebookId, selectedChapter, documentData, fileStructu
 
   return (
     <div className="h-full flex flex-col">
+      {/* 하이라이트 도구바 */}
+      <div className="border-b bg-background p-2">
+        <HighlightToolbar />
+      </div>
+      
       <Tabs defaultValue="notes" className="h-full flex flex-col">
         <div className="border-b">
           <div className="flex items-center justify-between px-4">
@@ -285,58 +281,6 @@ const DocumentViewer = ({ notebookId, selectedChapter, documentData, fileStructu
             </TabsList>
 
             <div className="flex items-center gap-2">
-              {/* Game functionality */}
-              {gameHtml ? (
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button variant="outline" size="sm" className="flex items-center gap-1 h-8">
-                      <Gamepad2 className="h-4 w-4" />
-                      게임 플레이
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent className="max-w-4xl h-[80vh]">
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>챕터 게임</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        게임을 통해 학습한 내용을 복습해보세요.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <div className="w-full h-full border rounded-md overflow-hidden">
-                      <iframe
-                        srcDoc={gameHtml}
-                        title="Chapter Game"
-                        className="w-full h-full"
-                        sandbox="allow-scripts allow-same-origin"
-                      />
-                    </div>
-                    <AlertDialogFooter>
-                      <AlertDialogAction>닫기</AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-              ) : (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="flex items-center gap-1 h-8"
-                  onClick={handleGenerateGame}
-                  disabled={isGeneratingGame}
-                >
-                  {isGeneratingGame ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      생성 중...
-                    </>
-                  ) : (
-                    <>
-                      <Gamepad2 className="h-4 w-4" />
-                      해당 챕터 게임 생성하기
-                    </>
-                  )}
-                </Button>
-              )}
-
-
               {/* Audio functionality */}
               <Button
                 variant="ghost"
@@ -355,13 +299,19 @@ const DocumentViewer = ({ notebookId, selectedChapter, documentData, fileStructu
 
 
         <TabsContent value="notes" className="flex-grow p-4 overflow-auto">
-          <div className="max-w-3xl mx-auto bg-white shadow-sm rounded-md p-6">
+          <div 
+            className={`max-w-3xl mx-auto bg-white shadow-sm rounded-md p-6 ${isHighlightMode ? 'highlight-mode' : ''}`} 
+            ref={documentContentRef}
+          >
             <div className="space-y-4">
               <h1 className="text-2xl font-bold">AI 생성 노트</h1>
               <p className="text-muted-foreground text-sm italic">
                 "{documentData.title}"에서 생성됨
                 {selectedChapter && ` - 챕터: ${selectedChapter}`}
               </p>
+
+              {/* 하이라이트 가이드 */}
+              <HighlightGuide />
 
               <div className="bg-secondary/30 p-4 rounded-md border border-border mt-4">
                 <h2 className="text-lg font-medium">요약</h2>
@@ -371,11 +321,50 @@ const DocumentViewer = ({ notebookId, selectedChapter, documentData, fileStructu
               </div>
 
               <div className="mt-6">
-                <h2 className="text-lg font-medium mb-2">주요 개념</h2>
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-lg font-medium">주요 개념</h2>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground">모든 개념:</span>
+                    <div className="flex gap-1">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 px-2 text-xs"
+                        onClick={() => setAllConceptsLevel('easy')}
+                      >
+                        쉬움
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 px-2 text-xs"
+                        onClick={() => setAllConceptsLevel('medium')}
+                      >
+                        보통
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 px-2 text-xs"
+                        onClick={() => setAllConceptsLevel('hard')}
+                      >
+                        어려움
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 px-2 text-xs"
+                        onClick={() => setAllConceptsLevel('all')}
+                      >
+                        전체
+                      </Button>
+                    </div>
+                  </div>
+                </div>
                 <ul className="space-y-3">
                   {documentData.aiNotes.keyConcepts.map((concept, index) => {
                     const currentLevel = keyConceptExplanationLevels[concept.term] || 'medium';
-                    const levelOrder: ExplanationLevel[] = ['easy', 'medium', 'hard'];
+                    const levelOrder: ExplanationLevel[] = ['easy', 'medium', 'hard', 'all'];
                     const currentIndex = levelOrder.indexOf(currentLevel);
 
                     const canDecreaseLevel = currentIndex > 0;
@@ -390,6 +379,36 @@ const DocumentViewer = ({ notebookId, selectedChapter, documentData, fileStructu
                     const increaseLevel = () => {
                       if (canIncreaseLevel) {
                         handleKeyConceptExplanationLevelChange(concept.term, levelOrder[currentIndex + 1]);
+                      }
+                    };
+
+                    // 모든 난이도 표시를 위한 함수
+                    const renderDefinition = () => {
+                      if (currentLevel === 'all') {
+                        return (
+                          <div className="text-sm mt-1 space-y-2">
+                            {concept.definition.easy && (
+                              <div className="p-2 bg-green-50 border-l-2 border-green-200 rounded">
+                                <div className="text-xs font-medium text-green-700 mb-1">쉬움</div>
+                                <div>{concept.definition.easy}</div>
+                              </div>
+                            )}
+                            {concept.definition.medium && (
+                              <div className="p-2 bg-blue-50 border-l-2 border-blue-200 rounded">
+                                <div className="text-xs font-medium text-blue-700 mb-1">보통</div>
+                                <div>{concept.definition.medium}</div>
+                              </div>
+                            )}
+                            {concept.definition.hard && (
+                              <div className="p-2 bg-red-50 border-l-2 border-red-200 rounded">
+                                <div className="text-xs font-medium text-red-700 mb-1">어려움</div>
+                                <div>{concept.definition.hard}</div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      } else {
+                        return <p className="text-sm mt-1">{concept.definition[currentLevel]}</p>;
                       }
                     };
 
@@ -421,11 +440,7 @@ const DocumentViewer = ({ notebookId, selectedChapter, documentData, fileStructu
                             </Button>
                           </div>
                         </div>
-                        <p className="text-sm mt-1">
-                          {typeof concept.definition === 'string'
-                            ? concept.definition
-                            : concept.definition[currentLevel]}
-                        </p>
+                        {renderDefinition()}
                       </li>
                     );
                   })}
@@ -443,6 +458,15 @@ const DocumentViewer = ({ notebookId, selectedChapter, documentData, fileStructu
                   ))}
                 </div>
               </div>
+
+              {/* 하이라이트 통계 */}
+              <HighlightStats 
+                notebookId={notebookId} 
+                chapterId={selectedChapter || ''} 
+              />
+
+              {/* 개발 환경에서만 데모 표시 */}
+              {import.meta.env.DEV && <HighlightDemo />}
 
             </div>
           </div>

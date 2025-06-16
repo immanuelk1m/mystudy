@@ -2,8 +2,11 @@ import os
 from dotenv import load_dotenv
 from pathlib import Path
 from typing import List, Dict, Any, Optional
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
 
 import logging # Added for this subtask
+from cache_manager import cached_llm_call, cache_manager
 # .env 파일을 이 모듈의 최상단에서 로드하여, 임포트 순서에 관계없이
 # llm 객체 초기화 전에 환경 변수가 확실히 로드되도록 합니다.
 env_path = Path(__file__).parent / '.env'
@@ -16,7 +19,7 @@ from langchain_core.runnables import RunnableLambda # Added for logging
 from pydantic import BaseModel, Field as PydanticField, ValidationError # Updated import
 
 from pypdf import PdfReader
-from . import models # Assuming models.py is in the same directory or accessible
+import models # Assuming models.py is in the same directory or accessible
 
 # Gemini LLM을 초기화합니다.
 # load_dotenv가 호출되었으므로, 라이브러리가 자동으로 환경에서 GOOGLE_API_KEY를 찾습니다.
@@ -26,31 +29,45 @@ llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash-preview-05-20", temperature
 
 # --- PDF Processing ---
 def extract_text_from_pdf(pdf_file_path: str) -> str:
-    """Extracts text from a given PDF file."""
+    """Extracts text from a given PDF file with optimized memory usage."""
     try:
         reader = PdfReader(pdf_file_path)
-        text = ""
-        for page in reader.pages:
-            page_text = page.extract_text()
-            if page_text:
-                text += page_text + "\n"
-        return text.strip()
+        text_parts = []
+        
+        # 메모리 효율성을 위해 페이지별로 처리
+        for page_num, page in enumerate(reader.pages):
+            try:
+                page_text = page.extract_text()
+                if page_text and page_text.strip():
+                    text_parts.append(page_text.strip())
+            except Exception as page_error:
+                print(f"Error extracting text from page {page_num + 1} of {pdf_file_path}: {page_error}")
+                continue
+        
+        return "\n".join(text_parts)
     except Exception as e:
         print(f"Error extracting text from PDF {pdf_file_path}: {e}")
-        # Consider raising a custom exception or returning an error indicator
         return ""
+
+# 스레드 풀 생성 (PDF 처리용)
+pdf_executor = ThreadPoolExecutor(max_workers=4, thread_name_prefix="pdf_worker")
+
+async def extract_text_from_pdf_async(pdf_file_path: str) -> str:
+    """비동기적으로 PDF에서 텍스트를 추출"""
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(pdf_executor, extract_text_from_pdf, pdf_file_path)
 
 # --- AI Notes Generation Pydantic Models for LLM Output ---
 # These help in getting structured JSON output from the LLM
 
 class LLMKeyConceptDefinition(BaseModel):
-    easy: Optional[str] = PydanticField(None, description="Simplified definition for beginners")
-    medium: Optional[str] = PydanticField(None, description="Standard definition")
-    hard: Optional[str] = PydanticField(None, description="Advanced or nuanced definition")
+    easy: str = PydanticField(..., description="Simplified definition for beginners")
+    medium: str = PydanticField(..., description="Standard definition")
+    hard: str = PydanticField(..., description="Advanced or nuanced definition")
 
 class LLMKeyConcept(BaseModel):
     term: str = PydanticField(..., description="The key concept or term")
-    definition: str | LLMKeyConceptDefinition = PydanticField(..., description="Definition of the term, can be simple string or detailed levels")
+    definition: LLMKeyConceptDefinition = PydanticField(..., description="Definition of the term with easy, medium, and hard difficulty levels")
 
 class LLMImportantTerm(BaseModel):
     term: str = PydanticField(..., description="An important term related to the content")
@@ -69,6 +86,7 @@ class LLMAINotes(BaseModel):
     important_terms: Optional[List[LLMImportantTerm]] = PydanticField(None, description="A list of 5-7 important terms and their definitions from the text.") # Made optional
     outline: List[LLMOutlineItem] = PydanticField(..., description="A hierarchical outline of the text content.")
 
+@cached_llm_call("ai_notes")
 async def generate_ai_notes_from_text(text_content: str) -> Optional[models.AINotes]:
     """Generates AI Notes (summary, key concepts, terms, outline) from text using Gemini."""
     if not text_content:
@@ -79,10 +97,14 @@ async def generate_ai_notes_from_text(text_content: str) -> Optional[models.AINo
     prompt_template = ChatPromptTemplate.from_messages([
         ("system", "모든 생성되는 텍스트는 반드시 한국어로 작성해 주십시오. 응답은 한국어로만 제공되어야 합니다. "
                    "You are an expert academic assistant. Your task is to analyze the provided text content and generate comprehensive AI Notes. "
-                   "The AI Notes should include a summary, key concepts with definitions (some definitions can be simple strings, others can have 'easy', 'medium', 'hard' levels), important terms with definitions, and a hierarchical outline. "
+                   "The AI Notes should include a summary, key concepts with definitions, important terms with definitions, and a hierarchical outline. "
+                   "For key concepts, ALWAYS provide definitions with three difficulty levels: 'easy', 'medium', and 'hard'. "
+                   "- 'easy': Simple, beginner-friendly explanation suitable for someone new to the topic "
+                   "- 'medium': Standard academic definition with appropriate detail "
+                   "- 'hard': Advanced, nuanced explanation with technical depth and context "
                    "Ensure IDs for outline items are unique and URL-friendly (e.g., 'topic-subsection'). "
                    "Format your response as a JSON object that strictly adheres to the following Pydantic schema: \n{format_instructions}"),
-        ("human", "Please generate AI Notes for the following text content: \n\n--BEGIN TEXT CONTENT--\n{text_content}\n--END TEXT CONTENT--")
+        ("human", "Please generate AI Notes for the following text content. Make sure to provide three difficulty levels (easy, medium, hard) for ALL key concept definitions: \n\n--BEGIN TEXT CONTENT--\n{text_content}\n--END TEXT CONTENT--")
     ])
 
     chain = prompt_template | llm | parser
@@ -99,7 +121,11 @@ async def generate_ai_notes_from_text(text_content: str) -> Optional[models.AINo
             summary=ai_notes_data.get('summary', ''),
             keyConcepts=[models.KeyConcept(
                 term=kc.get('term'), 
-                definition=kc.get('definition') # This handles both str and dict from LLMKeyConcept
+                definition=models.KeyConceptDefinition(
+                    easy=kc.get('definition', {}).get('easy', ''),
+                    medium=kc.get('definition', {}).get('medium', ''),
+                    hard=kc.get('definition', {}).get('hard', '')
+                )
             ) for kc in ai_notes_data.get('key_concepts', [])],
             importantTerms=[models.ImportantTerm(
                 term=it.get('term'), 
@@ -220,6 +246,22 @@ class LLMGeneratedChapter(BaseModel):
     ai_notes: LLMAINotes = PydanticField(..., description="AI-generated notes (summary, key concepts, terms, outline).")
     quiz: List[LLMQuizQuestion] = PydanticField(..., description="A short quiz with 2-3 questions based on the text content.")
 
+@cached_llm_call("chapter_content")
+async def generate_chapter_from_pdf_text(pdf_text: str, original_pdf_filename: str) -> Optional[models.DocumentContent]:
+    """
+    Wrapper function that generates a chapter from PDF text.
+    Uses the first part of the text to generate a title, then calls generate_content_for_chapter.
+    """
+    if not pdf_text:
+        return None
+    
+    # Generate a simple title from the filename or first few words
+    title = original_pdf_filename.replace('.pdf', '').replace('_', ' ').title()
+    if len(title) > 100:
+        title = title[:100] + "..."
+    
+    return await generate_content_for_chapter(title, pdf_text, original_pdf_filename)
+
 async def generate_content_for_chapter(chapter_title: str, chapter_text: str, original_pdf_filename: str) -> Optional[models.DocumentContent]:
     """
     Analyzes a chapter's text and generates a structured DocumentContent object,
@@ -249,6 +291,10 @@ async def generate_content_for_chapter(chapter_title: str, chapter_text: str, or
                    "2. Metadata including the source PDF filename and text length. "
                    "3. The full content broken down into logical blocks (headings, paragraphs). All text in these blocks must be in Korean. "
                    "4. Comprehensive AI Notes (summary, key concepts, important terms, outline). All text in AI Notes must be in Korean. "
+                   "   - For key concepts, ALWAYS provide definitions with three difficulty levels: 'easy', 'medium', and 'hard'. "
+                   "   - 'easy': Simple, beginner-friendly explanation suitable for someone new to the topic "
+                   "   - 'medium': Standard academic definition with appropriate detail "
+                   "   - 'hard': Advanced, nuanced explanation with technical depth and context "
                    "5. A quiz section containing a list of 2-3 multiple-choice questions designed to test understanding of the material. "
                    "   - Each quiz question must be an object strictly following this JSON structure: "
                    "     ```json\n"
@@ -647,202 +693,3 @@ async def analyze_holistic_structure(all_pdf_texts: List[Dict[str, str]]) -> Opt
 
 # --- Interactive Story Game Generation ---
 
-class StoryChoice(BaseModel):
-    """A choice a user can make in the story."""
-    text: str = PydanticField(..., description="The text displayed for the choice.")
-    next_scene_id: str = PydanticField(..., alias="nextSceneId", description="The ID of the scene this choice leads to.")
-
-class StoryScene(BaseModel):
-    """A single scene in the interactive story."""
-    scene_id: str = PydanticField(..., alias="sceneId", description="A unique identifier for the scene (e.g., 'start', 'scene_2').")
-    text: str = PydanticField(..., description="The descriptive text for the scene, advancing the story.")
-    choices: Optional[List[StoryChoice]] = PydanticField(None, description="A list of choices for the user. If null, this is an ending scene.")
-
-class StoryGame(BaseModel):
-    """The complete structure of the interactive story game."""
-    title: str = PydanticField(..., description="The title of the story game, based on the chapter title.")
-    start_scene_id: str = PydanticField(..., alias="startSceneId", description="The ID of the starting scene.")
-    scenes: List[StoryScene] = PydanticField(..., description="A list of all scenes in the story.")
-
-def _create_html_from_story_game(story_game: StoryGame) -> str:
-    """
-    Generates a self-contained HTML string from a StoryGame object.
-    CSS and JavaScript for game logic are embedded within the HTML.
-    """
-    
-    # Convert Pydantic scenes to a dictionary for easy JavaScript access
-    scenes_json = story_game.json(by_alias=True)
-
-    html_template = f"""
-&lt;!DOCTYPE html&gt;
-&lt;html lang="ko"&gt;
-&lt;head&gt;
-    &lt;meta charset="UTF-8"&gt;
-    &lt;meta name="viewport" content="width=device-width, initial-scale=1.0"&gt;
-    &lt;title&gt;{story_game.title}&lt;/title&gt;
-    &lt;style&gt;
-        body {{
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            background-color: #f0f2f5;
-            color: #1c1e21;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            margin: 0;
-            padding: 20px;
-            box-sizing: border-box;
-        }}
-        #game-container {{
-            background-color: #ffffff;
-            border-radius: 12px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-            padding: 30px;
-            max-width: 600px;
-            width: 100%;
-            text-align: center;
-            transition: all 0.3s ease;
-        }}
-        h1 {{
-            color: #0056b3;
-            margin-bottom: 20px;
-        }}
-        #scene-text {{
-            font-size: 1.1em;
-            line-height: 1.6;
-            margin-bottom: 25px;
-            min-height: 100px;
-            text-align: left;
-        }}
-        #choices-container {{
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }}
-        .choice-button {{
-            background-color: #007bff;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            padding: 12px 20px;
-            font-size: 1em;
-            cursor: pointer;
-            transition: background-color 0.2s;
-            width: 100%;
-            box-sizing: border-box;
-        }}
-        .choice-button:hover {{
-            background-color: #0056b3;
-        }}
-        .choice-button:disabled {{
-            background-color: #cccccc;
-            cursor: not-allowed;
-        }}
-    &lt;/style&gt;
-&lt;/head&gt;
-&lt;body&gt;
-    &lt;div id="game-container"&gt;
-        &lt;h1&gt;{story_game.title}&lt;/h1&gt;
-        &lt;div id="scene-text"&gt;&lt;/div&gt;
-        &lt;div id="choices-container"&gt;&lt;/div&gt;
-    &lt;/div&gt;
-
-    &lt;script&gt;
-        const storyData = {scenes_json};
-        const scenes = storyData.scenes.reduce((acc, scene) => {{
-            acc[scene.sceneId] = scene;
-            return acc;
-        }}, {{}});
-
-        const sceneTextElement = document.getElementById('scene-text');
-        const choicesContainer = document.getElementById('choices-container');
-
-        function showScene(sceneId) {{
-            const scene = scenes[sceneId];
-            if (!scene) {{
-                console.error(`Scene with id ${{sceneId}} not found.`);
-                sceneTextElement.textContent = "이야기를 찾을 수 없습니다. 오류가 발생했습니다.";
-                choicesContainer.innerHTML = '';
-                return;
-            }}
-
-            sceneTextElement.textContent = scene.text;
-            choicesContainer.innerHTML = '';
-
-            if (scene.choices && scene.choices.length > 0) {{
-                scene.choices.forEach(choice => {{
-                    const button = document.createElement('button');
-                    button.textContent = choice.text;
-                    button.className = 'choice-button';
-                    button.onclick = () => showScene(choice.nextSceneId);
-                    choicesContainer.appendChild(button);
-                }});
-            }} else {{
-                // This is an ending scene
-                const endMessage = document.createElement('p');
-                endMessage.textContent = "이야기가 끝났습니다. 플레이해주셔서 감사합니다!";
-                choicesContainer.appendChild(endMessage);
-            }}
-        }}
-
-        document.addEventListener('DOMContentLoaded', () => {{
-            showScene(storyData.startSceneId);
-        }});
-    &lt;/script&gt;
-&lt;/body&gt;
-&lt;/html&gt;
-    """
-    return html_template.strip()
-
-async def generate_story_game_html(chapter_title: str, chapter_content: str) -> Optional[str]:
-    """
-    Generates a self-contained, interactive HTML story game based on chapter content.
-
-    Args:
-        chapter_title: The title of the chapter.
-        chapter_content: The text content of the chapter.
-
-    Returns:
-        A string containing a full, self-contained HTML document for the game, or None on failure.
-    """
-    if not chapter_content:
-        return None
-
-    parser = JsonOutputParser(pydantic_object=StoryGame)
-
-    prompt_template = ChatPromptTemplate.from_messages([
-        ("system", "모든 생성되는 텍스트는 반드시 한국어로 작성해 주십시오. 응답은 한국어로만 제공되어야 합니다. "
-                   "You are an expert educational game designer. Your mission is to transform the provided academic chapter content into a simple, engaging, and interactive story-based game. "
-                   "The game must be self-contained in a single HTML file. "
-                   "The story should be based on the key concepts of the chapter, allowing the user to learn while playing. "
-                   "Create a narrative with a clear beginning, a few branching choices, and a definitive end. The story should consist of 3 to 5 scenes. "
-                   "The output must be a JSON object that strictly follows this Pydantic schema:\n{format_instructions}\n"
-                   "Ensure all text (titles, scene descriptions, choices) is in Korean. The scene and choice IDs should be simple strings (e.g., 'start', 'scene_2', 'bad_ending')."),
-        ("human", "Please create an interactive story game based on the following chapter."
-                  "\n\n**Chapter Title:** {chapter_title}"
-                  "\n\n**Chapter Content:**\n--BEGIN CONTENT--\n{chapter_content}\n--END CONTENT--")
-    ])
-
-    chain = prompt_template | llm | parser
-
-    try:
-        story_game_data = await chain.ainvoke({
-            "chapter_title": chapter_title,
-            "chapter_content": chapter_content,
-            "format_instructions": parser.get_format_instructions()
-        })
-        
-        # The parser returns a dict, which we can validate with our Pydantic model
-        story_game_model = StoryGame(**story_game_data)
-        
-        # Now, generate the final HTML from the structured data
-        return _create_html_from_story_game(story_game_model)
-
-    except ValidationError as e:
-        print(f"[STORY GAME GEN] Pydantic validation error in LLM output: {e.json()}")
-        return None
-    except Exception as e:
-        print(f"[STORY GAME GEN] Unexpected error in generate_story_game_html: {e}")
-        import traceback
-        traceback.print_exc()
-        return None

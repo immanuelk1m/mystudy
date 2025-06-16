@@ -24,7 +24,7 @@ interface DocumentContent {
   documentContent: Array<{ type: string; level?: number; text?: string; items?: string[] }>;
   aiNotes: {
     summary: string;
-    keyConcepts: Array<{ term: string; definition: string }>;
+    keyConcepts: Array<{ term: string; definition: { easy: string; medium: string; hard: string } }>;
     importantTerms: Array<{ term: string; definition: string }>;
     outline: Array<{ title: string; id: string }>;
   };
@@ -34,7 +34,6 @@ interface DocumentContent {
     answerIndex: number;
     explanation: string;
   }>;
-  game_html?: string;
 }
 
 // Sidebar에 필요한 파일 구조 타입. Chapter 데이터를 이 형태로 변환합니다.
@@ -108,7 +107,6 @@ const Workspace = () => {
                 documentContent: structureData.nodes || [],
                 aiNotes: contentData.aiNotes || { summary: '', keyConcepts: [], importantTerms: [], outline: [] },
                 quiz: contentData.quiz || [],
-                game_html: chapterInfo?.game_html || contentData.game_html,
                 ...contentData,
             };
             setDocumentData(transformedData);

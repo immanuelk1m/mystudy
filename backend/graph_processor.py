@@ -7,8 +7,8 @@ from typing import Any, Dict, List, Sequence, TypedDict, Annotated
 from langgraph.graph import END, StateGraph
 from pydantic import BaseModel
 
-from . import ai_services, crud
-from .database import SessionLocal
+import ai_services, crud
+from database import SessionLocal
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(BASE_DIR, 'data')

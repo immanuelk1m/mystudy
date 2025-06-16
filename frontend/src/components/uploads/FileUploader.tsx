@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { Upload, FolderUp, File, Loader2 } from 'lucide-react';
 import { uploadMultiplePdfs } from '@/services/api'; // 새로운 import 추가
+import { useUploadProgress } from '@/contexts/UploadProgressContext';
 
 interface FileUploadProps {
   onClose: () => void;
@@ -25,6 +26,7 @@ const ALLOWED_FILE_TYPE = 'application/pdf';
 const FileUploader = ({ onClose }: FileUploadProps) => {
   const [files, setFiles] = useState<File[]>([]);
   const [uploadType, setUploadType] = useState<'files' | 'folder'>('files');
+  const { addTask } = useUploadProgress();
   const [dragActive, setDragActive] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -108,9 +110,16 @@ const FileUploader = ({ onClose }: FileUploadProps) => {
     try {
       // 실제 API 호출 로직으로 변경
       const response = await uploadMultiplePdfs(files);
+      
+      // 각 파일에 대해 진행 상황 추적 작업 추가
+      files.forEach(file => {
+        addTask(response.run_id, file.name);
+      });
+      
       toast.success(response.message || `${files.length}개 PDF 파일 업로드 요청 성공`);
+      toast.info('파일 처리 진행 상황을 확인하세요!');
       setFiles([]); // 성공 시 파일 목록 초기화
-      // onClose(); // 성공 시 다이얼로그를 닫을지 여부는 UX에 따라 결정 (현재는 닫지 않음)
+      onClose(); // 업로드 성공 시 다이얼로그 닫기
     } catch (error) {
       console.error('File upload error:', error);
       if (error instanceof Error) {

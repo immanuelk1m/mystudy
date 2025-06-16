@@ -99,7 +99,7 @@ export const uploadMultiplePdfs = async (
   });
 
   const response = await fetch(
-    `${API_BASE_URL}/api/batch-process-pdfs/`, // 새 엔드포인트 경로
+    `${API_BASE_URL}/batch_processing/`, // 백엔드 라우터 경로와 일치
     {
       method: 'POST',
       // 'Content-Type': 'multipart/form-data' 헤더는 FormData 사용 시 브라우저가 자동으로 설정합니다.
@@ -113,6 +113,30 @@ export const uploadMultiplePdfs = async (
     }));
     throw new Error(errorData.detail || 'Failed to upload multiple PDFs');
   }
+  return response.json();
+};
+
+// 진행 상황 추적 API
+export const getProcessingProgress = async (taskId: string) => {
+  const response = await fetch(`${API_BASE_URL}/batch_processing/progress/${taskId}`);
+  
+  if (!response.ok) {
+    if (response.status === 404) {
+      return null; // 작업을 찾을 수 없음
+    }
+    throw new Error('Failed to fetch progress');
+  }
+  
+  return response.json();
+};
+
+export const getAllProcessingTasks = async () => {
+  const response = await fetch(`${API_BASE_URL}/batch_processing/tasks`);
+  
+  if (!response.ok) {
+    throw new Error('Failed to fetch tasks');
+  }
+  
   return response.json();
 };
 // 새로운 인터페이스 및 함수 추가 끝
@@ -137,7 +161,6 @@ export interface Chapter {
 export interface ChapterContent {
   // 챕터 내용에 대한 타입을 정의합니다.
   // 예: title: string; summary: string; etc.
-  game_html?: string; // 게임 HTML 컨텐츠
   [key: string]: any; // 우선 간단하게 정의
 }
 
@@ -212,25 +235,45 @@ export const getChapterStructure = async (notebookId: string, chapterId: string)
 };
 
 /**
- * 특정 챕터의 게임 생성을 요청합니다.
+ * 노트북 정보를 업데이트합니다.
  * @param notebookId 노트북 ID
- * @param chapterId 챕터 ID
- * @returns 생성된 게임 정보 (주로 game_html 포함)
+ * @param title 새로운 제목 (선택사항)
+ * @param description 새로운 설명 (선택사항)
  */
-export const generateChapterGame = async (notebookId: string, chapterId: string): Promise<{ message: string; game_html: string }> => {
-  const response = await fetch(
-    `${API_BASE_URL}/api/notebooks/chapters/${chapterId}/generate-game`,
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    }
-  );
+export const updateNotebook = async (
+  notebookId: string, 
+  title?: string, 
+  description?: string
+): Promise<Notebook> => {
+  const updateData: { title?: string; description?: string } = {};
+  if (title !== undefined) updateData.title = title;
+  if (description !== undefined) updateData.description = description;
+
+  const response = await fetch(`${API_BASE_URL}/api/notebooks/${notebookId}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(updateData),
+  });
 
   if (!response.ok) {
-    const errorData = await response.json().catch(() => ({ detail: 'Failed to generate chapter game. Unknown error.' }));
-    throw new Error(errorData.detail || 'Failed to generate chapter game');
+    throw new Error(`Failed to update notebook ${notebookId}`);
   }
   return response.json();
 };
+
+/**
+ * 노트북을 삭제합니다.
+ * @param notebookId 노트북 ID
+ */
+export const deleteNotebook = async (notebookId: string): Promise<void> => {
+  const response = await fetch(`${API_BASE_URL}/api/notebooks/${notebookId}`, {
+    method: 'DELETE',
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to delete notebook ${notebookId}`);
+  }
+};
+

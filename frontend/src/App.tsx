@@ -10,6 +10,8 @@ import NotFound from "./pages/NotFound";
 import PremiumPlanPage from "./pages/PremiumPlanPage"; // PremiumPlanPage import 추가
 import { GuestProvider } from "./contexts/GuestContext"; // GuestProvider import 추가
 import { ModalProvider } from "./contexts/ModalContext"; // ModalProvider import 추가
+import { HighlightProvider } from "./contexts/HighlightContext"; // HighlightProvider import 추가
+import { UploadProgressProvider } from "./contexts/UploadProgressContext"; // UploadProgressProvider import 추가
 import AuthModal from "./components/auth/AuthModal"; // AuthModal import 추가
 import { useModal } from "./contexts/ModalContext"; // useModal import 추가
 
@@ -41,7 +43,11 @@ const App = () => (
     <TooltipProvider>
       <GuestProvider> {/* GuestProvider 추가 */}
         <ModalProvider> {/* ModalProvider 추가 */}
-          <AppContent />
+          <UploadProgressProvider> {/* UploadProgressProvider 추가 */}
+            <HighlightProvider> {/* HighlightProvider 추가 */}
+              <AppContent />
+            </HighlightProvider>
+          </UploadProgressProvider>
         </ModalProvider>
       </GuestProvider> {/* GuestProvider 추가 */}
     </TooltipProvider>
