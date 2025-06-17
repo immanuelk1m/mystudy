@@ -15,7 +15,7 @@ install-frontend-deps:
 # Individual run targets (foreground)
 run-backend:
 	@echo "Starting backend server on http://localhost:8000 ..."
-	@cd backend && PYTHONPATH=. uv run uvicorn main:app --reload --port 8000
+	@cd backend && uv run python -m uvicorn main:app --reload --port 8000
 
 run-frontend:
 	@echo "Starting frontend server with 'npm run dev' on http://localhost:3000 (Vite default) ..."
@@ -24,7 +24,7 @@ run-frontend:
 # Target to run backend in background
 run-backend-bg:
 	@echo "Starting backend server in background on http://localhost:8000 ..."
-	@cd backend && PYTHONPATH=. nohup uv run uvicorn main:app --reload --port 8000 > backend.log 2>&1 &
+	@cd backend && nohup uv run python -m uvicorn main:app --reload --port 8000 > backend.log 2>&1 &
 
 # Target to run both: backend in background, frontend in foreground
 run: run-backend-bg run-frontend

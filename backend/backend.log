@@ -1,0 +1,39 @@
+INFO:     Will watch for changes in these directories: ['/Users/seongeun/Desktop/study/backend']
+INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+INFO:     Started reloader process [8443] using WatchFiles
+INFO:     Started server process [8445]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:performance:Query get_notebooks executed in 0.021s
+INFO:     127.0.0.1:51915 - "GET /api/notebooks HTTP/1.1" 200 OK
+INFO:performance:Query get_notebooks executed in 0.001s
+INFO:     127.0.0.1:51927 - "GET /api/notebooks HTTP/1.1" 200 OK
+INFO:performance:Query get_chapters_for_notebook executed in 0.013s
+INFO:     127.0.0.1:51927 - "GET /api/notebooks/2/chapters HTTP/1.1" 200 OK
+INFO:performance:Query get_notebook_by_id executed in 0.018s
+INFO:performance:Query get_chapters_for_notebook executed in 0.005s
+INFO:     127.0.0.1:51927 - "GET /api/notebooks/2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51930 - "GET /api/notebooks/2/chapters HTTP/1.1" 200 OK
+INFO:root:Attempting to read content for notebook 2, chapter 8
+INFO:root:Successfully retrieved content for notebook 2, chapter 8
+INFO:     127.0.0.1:51930 - "GET /api/notebooks/2/content?path=8 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51927 - "GET /api/notebooks/2/structure?path=8 HTTP/1.1" 200 OK
+INFO:performance:Query get_notebook_by_id executed in 0.010s
+INFO:performance:Query get_chapters_for_notebook executed in 0.005s
+INFO:     127.0.0.1:51933 - "GET /api/notebooks/2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51935 - "GET /api/notebooks/2/chapters HTTP/1.1" 200 OK
+INFO:root:Attempting to read content for notebook 2, chapter 4
+INFO:root:Successfully retrieved content for notebook 2, chapter 4
+INFO:     127.0.0.1:51935 - "GET /api/notebooks/2/content?path=4 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51933 - "GET /api/notebooks/2/structure?path=4 HTTP/1.1" 200 OK
+INFO:performance:Query get_notebooks executed in 0.002s
+INFO:     127.0.0.1:51935 - "GET /api/notebooks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51944 - "POST /batch_processing/ HTTP/1.1" 404 Not Found
+INFO:performance:Query get_notebooks executed in 0.017s
+INFO:     127.0.0.1:52318 - "GET /api/notebooks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52320 - "POST /batch_processing/ HTTP/1.1" 404 Not Found
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [8445]
+INFO:     Stopping reloader process [8443]
