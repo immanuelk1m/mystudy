@@ -43,6 +43,36 @@ PDF 여러 개를 동시에 분석할 때는 `graph_processor.py`에 정의된 L
 
 각 단계의 실행 상태는 로그로 저장되며, `/api/batch-process-pdfs/logs/{run_id}`를 통해 확인할 수 있습니다. 파이프라인 덕분에 여러 문서를 순차적으로 분석하고 한 번에 노트북을 완성할 수 있습니다.
 
+### 파이프라인 흐름 다이어그램
+
+```
+PDF 업로드
+   │
+   ▼
+start_processing
+   │
+   ▼
+analyze_overall_structure
+   │
+   ▼
+generate_chapter_content
+   │
+   ▼
+finish_processing
+   │
+   ▼
+노트북 저장 완료
+```
+
+### 예시 시나리오
+
+1. `math.pdf`와 `physics.pdf` 두 파일을 `/api/batch-process-pdfs/` 로 업로드합니다.
+2. 서버가 파일을 받으면 각 PDF에서 텍스트를 추출하고 LangGraph 파이프라인을 시작합니다.
+3. `analyze_overall_structure` 단계에서 두 파일의 내용을 조합해 노트북 제목과 챕터 구조를 제안합니다.
+4. `generate_chapter_content` 단계에서 각 챕터에 대한 요약과 퀴즈가 생성됩니다.
+5. `finish_processing` 단계에서 모든 결과가 데이터베이스에 저장되고 새로운 노트북 ID가 생성됩니다.
+6. 최종적으로 `/api/notebooks/{notebook_id}`를 호출하여 생성된 노트북 내용을 볼 수 있습니다.
+
 ---
 
 이렇게 정리된 엔드포인트와 LangGraph의 동작 방식을 참고하면 프로젝트의 백엔드 구조를 쉽게 파악할 수 있습니다.
